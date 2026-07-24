@@ -4,6 +4,25 @@ Reverse-chronological. One entry per task/phase.
 
 ---
 
+## 2026-07-24 — Favicon: swapped to the white (dark-variant) mark
+
+`src/app/icon.png` / `apple-icon.png` were the `-light` variant of the
+new user-provided NQ monogram (near-black line art on transparent) —
+invisible against dark browser-tab chrome, per explicit report. Swapped
+both to the `-dark` variant (`public/brand/northqu-mark-dark.png`, white
+line art, verified transparent and legible against black/Space-Indigo
+backgrounds by direct render — not assumed from the file name). Same
+source asset `LogoMark`/`Logo.tsx` already uses for dark surfaces
+site-wide; no new asset was generated, no code changes needed, since
+Next's `app/icon.png` convention is just a static file.
+
+**Verified:** `tsc --noEmit` clean (no code touched, so this was
+expected). Rendered `northqu-mark-dark.png` directly on near-black,
+Space Indigo, and white swatches to confirm it is genuinely white art on
+a transparent background before copying it into place, not a blank/
+broken image (which is what it looks like in a plain white-background
+image viewer — easy to mistake for empty).
+
 ## 2026-07-21 — New user-provided NQ logo assets + footer back to black
 
 Replaced the earlier flattened-Canva-ring logo with two new user-provided
