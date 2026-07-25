@@ -7,7 +7,9 @@ export default function SignupPage() {
     <div className="flex min-h-screen items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8">
-          <LogoLockup className="h-8" />
+          <Link href="/?home=1">
+            <LogoLockup className="h-8" />
+          </Link>
         </div>
         <h1 className="font-display text-3xl text-black dark:text-white">Create an account</h1>
         <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">

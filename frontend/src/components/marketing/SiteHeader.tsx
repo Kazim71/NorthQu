@@ -28,7 +28,12 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white/85 backdrop-blur dark:border-neutral-800/80 dark:bg-black/85">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-        <Link href="/">
+        {/* `?home=1` bypasses "/"'s auth-redirect (see (marketing)/page.tsx)
+            — this header also renders for an authenticated visitor who
+            navigated directly to a marketing page like /about, and the
+            logo must show the actual homepage, not bounce them into
+            /dashboard. */}
+        <Link href="/?home=1">
           <LogoLockup className="h-7" />
         </Link>
 

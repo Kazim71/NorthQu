@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState, type ReactNode } from 'react';
 import { ThemeToggle } from './ThemeToggle';
 import { SignOutButton } from './SignOutButton';
@@ -168,10 +169,17 @@ export function DashboardChrome({
   );
 }
 
+/**
+ * `?home=1` bypasses "/"'s auth-redirect (see (marketing)/page.tsx) — every
+ * dashboard/super-admin visitor is authenticated by definition, so without
+ * the bypass the logo would be a dead click, always redirecting straight
+ * back to the page it was clicked from.
+ */
 function Brand({ collapsed }: { collapsed: boolean }) {
-  // Collapsed sidebar shows the monogram alone; expanded shows the full lockup.
-  if (collapsed) {
-    return <LogoMark className="h-8 w-8 flex-none" />;
-  }
-  return <LogoLockup className="h-8 flex-none" />;
+  return (
+    <Link href="/?home=1" aria-label="NorthQu home">
+      {/* Collapsed sidebar shows the monogram alone; expanded shows the full lockup. */}
+      {collapsed ? <LogoMark className="h-8 w-8 flex-none" /> : <LogoLockup className="h-8 flex-none" />}
+    </Link>
+  );
 }

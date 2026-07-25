@@ -18,7 +18,9 @@ export function SiteFooter() {
       <div className="mx-auto max-w-6xl px-6 py-14">
         <div className="grid gap-10 sm:grid-cols-[1.5fr_1fr_1fr]">
           <div>
-            <LogoLockup className="h-7" forceVariant="dark" />
+            <Link href="/?home=1">
+              <LogoLockup className="h-7" forceVariant="dark" />
+            </Link>
             <p className="mt-4 max-w-xs text-sm text-marketing-textDim">Technology with direction.</p>
             <nav className="mt-6 flex flex-wrap gap-x-5 gap-y-2">
               <Link href="/services" className="text-sm text-marketing-textDim hover:text-marketing-text">

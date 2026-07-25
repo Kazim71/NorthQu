@@ -67,6 +67,17 @@ export function CloseIcon({ className = base }: IconProps) {
   );
 }
 
+/** Anonymous Visitors nav item — a dashed/outline person, distinct from
+ *  LeadsIcon's solid circle to read as "not yet identified" at a glance. */
+export function AnonymousIcon({ className = base }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="8" r="3.2" strokeDasharray="2.5 2.5" />
+      <path d="M5 20c0-3.6 3.1-6.5 7-6.5s7 2.9 7 6.5" strokeDasharray="2.5 2.5" />
+    </svg>
+  );
+}
+
 export function BellIcon({ className = base }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { previousRange, rangeLengthDays, toDateParam, type DateRange } from './dateRange';
 
 export interface Organization {
   id: string;
@@ -62,6 +63,30 @@ export interface OrgSummary {
   eventsByType: { type: string; count: number }[];
   topCities: { city: string; count: number }[];
   statusBreakdown: { status: string; count: number }[];
+  /** Share of the selected range's events per device_type. Empty until Phase 6 enrichment has data. */
+  deviceBreakdown: { type: string; count: number }[];
+}
+
+export interface AnonymousVisitorEvent {
+  id: string;
+  event_type: string;
+  url: string | null;
+  created_at: string;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface AnonymousVisitor {
+  visitorId: string;
+  firstSeen: string;
+  lastSeen: string;
+  eventCount: number;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  deviceBrowser: string | null;
+  deviceOs: string | null;
+  deviceType: string | null;
+  recentEvents: AnonymousVisitorEvent[];
 }
 
 /**
@@ -118,9 +143,18 @@ export async function getContactCountsByOrg(
   return counts;
 }
 
+/**
+ * `range`, if given, scopes each lead's `eventCount`/`recentEvents` to that
+ * window — it does NOT change which contacts are returned. A lead with zero
+ * events in the selected range still appears (with eventCount: 0), rather
+ * than disappearing from the list: the leads table is a CRM view of every
+ * known contact, not an activity feed, and contacts should never seem to
+ * vanish because of which date range happens to be selected.
+ */
 export async function getLeads(
   supabase: SupabaseClient,
   organizationId: string,
+  range?: DateRange,
 ): Promise<Lead[]> {
   const { data: contacts, error: contactsError } = await supabase
     .from('contacts')
@@ -137,13 +171,19 @@ export async function getLeads(
 
   // Two queries total, not one per lead. Events are fetched in a single
   // batched `in` and grouped in memory.
-  const { data: events, error: eventsError } = await supabase
+  let eventsQuery = supabase
     .from('events')
     .select('id, contact_id, event_type, url, created_at, metadata')
     .eq('organization_id', organizationId)
     .in('contact_id', contactIds)
     .order('created_at', { ascending: false })
     .limit(500);
+
+  if (range) {
+    eventsQuery = eventsQuery.gte('created_at', range.from.toISOString()).lte('created_at', range.to.toISOString());
+  }
+
+  const { data: events, error: eventsError } = await eventsQuery;
 
   if (eventsError) throw new Error(`Failed to load events: ${eventsError.message}`);
 
@@ -170,20 +210,35 @@ export async function getLeads(
   });
 }
 
+/**
+ * `range`, if given, scopes every ACTIVITY metric (eventCount, eventsByType,
+ * topCities, deviceBreakdown, anonymous/identifiedEventCount) to that
+ * window. `contactCount` and `statusBreakdown` deliberately stay all-time —
+ * they describe the org's current customer base and current lead pipeline
+ * state, not "what happened in the last N days", so windowing them would
+ * make a low-traffic day look like contacts had disappeared.
+ */
 export async function getOrgSummary(
   supabase: SupabaseClient,
   organizationId: string,
+  range?: DateRange,
 ): Promise<OrgSummary> {
+  let eventsQuery = supabase
+    .from('events')
+    .select('event_type, contact_id, city, device_type')
+    .eq('organization_id', organizationId);
+
+  if (range) {
+    eventsQuery = eventsQuery.gte('created_at', range.from.toISOString()).lte('created_at', range.to.toISOString());
+  }
+
   const [{ count: contactCount }, { data: events }, { data: contacts }] =
     await Promise.all([
       supabase
         .from('contacts')
         .select('id', { count: 'exact', head: true })
         .eq('organization_id', organizationId),
-      supabase
-        .from('events')
-        .select('event_type, contact_id, city')
-        .eq('organization_id', organizationId),
+      eventsQuery,
       supabase
         .from('contacts')
         .select('message_status')
@@ -194,16 +249,19 @@ export async function getOrgSummary(
     event_type: string;
     contact_id: string | null;
     city: string | null;
+    device_type: string | null;
   }[];
 
   const typeCounts = new Map<string, number>();
   const cityCounts = new Map<string, number>();
+  const deviceCounts = new Map<string, number>();
   let anonymous = 0;
 
   for (const e of eventRows) {
     typeCounts.set(e.event_type, (typeCounts.get(e.event_type) ?? 0) + 1);
     if (e.contact_id === null) anonymous++;
     if (e.city) cityCounts.set(e.city, (cityCounts.get(e.city) ?? 0) + 1);
+    if (e.device_type) deviceCounts.set(e.device_type, (deviceCounts.get(e.device_type) ?? 0) + 1);
   }
 
   const statusCounts = new Map<string, number>();
@@ -228,6 +286,9 @@ export async function getOrgSummary(
     statusBreakdown: sortDesc(
       [...statusCounts.entries()].map(([status, count]) => ({ status, count })),
     ),
+    deviceBreakdown: sortDesc(
+      [...deviceCounts.entries()].map(([type, count]) => ({ type, count })),
+    ),
   };
 }
 
@@ -240,20 +301,23 @@ export async function getOrgSummary(
 // query mechanism.
 // =====================================================================
 
-function bucketByDay(timestamps: string[], days: number): DailyCount[] {
+function bucketByDay(timestamps: string[], range: DateRange): DailyCount[] {
   const buckets = new Map<string, number>();
 
   // Seed every day in the window with 0 so the chart has no gaps — a day
   // with no events must render as a zero point, not a missing one.
-  const now = new Date();
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    buckets.set(d.toISOString().slice(0, 10), 0);
+  const days = rangeLengthDays(range);
+  for (let i = 0; i < days; i++) {
+    const d = new Date(range.from);
+    d.setDate(d.getDate() + i);
+    buckets.set(toDateParam(d), 0);
   }
 
   for (const ts of timestamps) {
-    const day = ts.slice(0, 10);
+    // ts is a UTC ISO timestamp; bucket by its LOCAL calendar day so it
+    // lines up with the from/to range, which is itself local-day based
+    // (see dateRange.ts's toDateParam).
+    const day = toDateParam(new Date(ts));
     if (buckets.has(day)) buckets.set(day, (buckets.get(day) ?? 0) + 1);
   }
 
@@ -264,20 +328,18 @@ function bucketByDay(timestamps: string[], days: number): DailyCount[] {
 export async function getEventsOverTime(
   supabase: SupabaseClient,
   organizationId: string,
-  days = 14,
+  range: DateRange,
 ): Promise<DailyCount[]> {
-  const since = new Date();
-  since.setDate(since.getDate() - (days - 1));
-
   const { data, error } = await supabase
     .from('events')
     .select('created_at')
     .eq('organization_id', organizationId)
-    .gte('created_at', since.toISOString());
+    .gte('created_at', range.from.toISOString())
+    .lte('created_at', range.to.toISOString());
 
   if (error) throw new Error(`Failed to load event history: ${error.message}`);
 
-  return bucketByDay((data ?? []).map((r) => (r as { created_at: string }).created_at), days);
+  return bucketByDay((data ?? []).map((r) => (r as { created_at: string }).created_at), range);
 }
 
 /**
@@ -289,48 +351,45 @@ export async function getEventsOverTime(
  */
 export async function getPlatformEventsOverTime(
   supabase: SupabaseClient,
-  days = 14,
+  range: DateRange,
 ): Promise<DailyCount[]> {
-  const since = new Date();
-  since.setDate(since.getDate() - (days - 1));
-
   const { data, error } = await supabase
     .from('events')
     .select('created_at')
-    .gte('created_at', since.toISOString());
+    .gte('created_at', range.from.toISOString())
+    .lte('created_at', range.to.toISOString());
 
   if (error) throw new Error(`Failed to load platform event history: ${error.message}`);
 
-  return bucketByDay((data ?? []).map((r) => (r as { created_at: string }).created_at), days);
+  return bucketByDay((data ?? []).map((r) => (r as { created_at: string }).created_at), range);
 }
 
 /**
- * Event-count trend: this 7-day window vs. the 7 days before it. Computed
- * from two real `created_at` ranges — never fabricated. `previous === 0`
- * yields `pctChange: null` rather than a nonsensical infinite percentage.
+ * Event-count trend: the selected range vs. the equal-length window
+ * immediately before it (see dateRange.ts's previousRange). Computed from
+ * two real `created_at` ranges — never fabricated. `previous === 0` yields
+ * `pctChange: null` rather than a nonsensical infinite percentage.
  */
 export async function getEventCountTrend(
   supabase: SupabaseClient,
   organizationId: string,
+  range: DateRange,
 ): Promise<TrendStat> {
-  const now = new Date();
-  const weekAgo = new Date(now);
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const twoWeeksAgo = new Date(now);
-  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+  const prior = previousRange(range);
 
   const [{ count: current }, { count: previous }] = await Promise.all([
     supabase
       .from('events')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
-      .gte('created_at', weekAgo.toISOString()),
+      .gte('created_at', range.from.toISOString())
+      .lte('created_at', range.to.toISOString()),
     supabase
       .from('events')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
-      .gte('created_at', twoWeeksAgo.toISOString())
-      .lt('created_at', weekAgo.toISOString()),
+      .gte('created_at', prior.from.toISOString())
+      .lte('created_at', prior.to.toISOString()),
   ]);
 
   const cur = current ?? 0;
@@ -403,5 +462,83 @@ export async function getPlatformReadySignal(
     city: row.city,
     last_seen: row.last_seen,
     organizationName: row.organizations?.name,
+  }));
+}
+
+// =====================================================================
+// Anonymous visitors — Phase 6. Visitors with events but no linked contact,
+// scoped to a date range. See migration 0007's get_anonymous_visitors()
+// for why this is a Postgres function (range-filters BEFORE aggregating)
+// rather than a plain view.
+// =====================================================================
+
+interface AnonymousVisitorRpcRow {
+  visitor_id: string;
+  first_seen: string;
+  last_seen: string;
+  event_count: number;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  device_browser: string | null;
+  device_os: string | null;
+  device_type: string | null;
+}
+
+export async function getAnonymousVisitors(
+  supabase: SupabaseClient,
+  organizationId: string,
+  range: DateRange,
+): Promise<AnonymousVisitor[]> {
+  const { data, error } = await supabase.rpc('get_anonymous_visitors', {
+    p_organization_id: organizationId,
+    p_from: range.from.toISOString(),
+    p_to: range.to.toISOString(),
+  });
+
+  if (error) throw new Error(`Failed to load anonymous visitors: ${error.message}`);
+
+  const rows = (data ?? []) as AnonymousVisitorRpcRow[];
+  if (rows.length === 0) return [];
+
+  // Second query for the expandable activity trail, same batched-`in`
+  // pattern as getLeads — one query for all visitors, grouped in memory,
+  // not one query per row.
+  const visitorIds = rows.map((r) => r.visitor_id);
+  const { data: events, error: eventsError } = await supabase
+    .from('events')
+    .select('id, visitor_id, event_type, url, created_at, metadata')
+    .eq('organization_id', organizationId)
+    .in('visitor_id', visitorIds)
+    .is('contact_id', null)
+    .gte('created_at', range.from.toISOString())
+    .lte('created_at', range.to.toISOString())
+    .order('created_at', { ascending: false })
+    .limit(1000);
+
+  if (eventsError) throw new Error(`Failed to load anonymous visitor events: ${eventsError.message}`);
+
+  const byVisitor = new Map<string, AnonymousVisitorEvent[]>();
+  for (const e of (events ?? []) as (AnonymousVisitorEvent & { visitor_id: string })[]) {
+    const list = byVisitor.get(e.visitor_id) ?? [];
+    list.push({ id: e.id, event_type: e.event_type, url: e.url, created_at: e.created_at, metadata: e.metadata });
+    byVisitor.set(e.visitor_id, list);
+  }
+
+  return rows.map((r) => ({
+    visitorId: r.visitor_id,
+    firstSeen: r.first_seen,
+    lastSeen: r.last_seen,
+    // event_count comes from the RPC (a true count over the full range, not
+    // capped by the 1000-row detail fetch above) — the source of truth for
+    // the count column; recentEvents is only for the expandable trail.
+    eventCount: r.event_count,
+    city: r.city,
+    state: r.state,
+    country: r.country,
+    deviceBrowser: r.device_browser,
+    deviceOs: r.device_os,
+    deviceType: r.device_type,
+    recentEvents: (byVisitor.get(r.visitor_id) ?? []).slice(0, 8),
   }));
 }

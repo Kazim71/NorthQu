@@ -2,7 +2,7 @@ import { requireOrgAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { getOrganization, getReadySignal } from '@/lib/queries';
 import { AppShell } from '@/components/AppShell';
-import { LeadsIcon, SummaryIcon } from '@/components/icons';
+import { AnonymousIcon, LeadsIcon, SummaryIcon } from '@/components/icons';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Gate runs before any child renders. organizationId comes from the
@@ -18,6 +18,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <AppShell
       navItems={[
         { href: '/dashboard', label: 'Leads', icon: <LeadsIcon /> },
+        { href: '/dashboard/anonymous', label: 'Anonymous Visitors', icon: <AnonymousIcon /> },
         { href: '/dashboard/summary', label: 'Summary', icon: <SummaryIcon /> },
       ]}
       contextLabel={org?.name ?? 'Your organization'}

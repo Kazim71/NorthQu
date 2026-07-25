@@ -63,7 +63,7 @@ export function SummaryPanel({
         </Card>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader>
             <h3 className="font-display text-lg text-black dark:text-neutral-100">Events by type</h3>
@@ -138,6 +138,40 @@ export function SummaryPanel({
                     </span>
                   </li>
                 ))}
+              </ul>
+            )}
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <h3 className="font-display text-lg text-black dark:text-neutral-100">Device / browser</h3>
+          </CardHeader>
+          <CardBody>
+            {summary.deviceBreakdown.length === 0 ? (
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                No device data captured yet.
+              </p>
+            ) : (
+              <ul className="space-y-2.5">
+                {summary.deviceBreakdown.map((row) => {
+                  const total = summary.deviceBreakdown.reduce((sum, r) => sum + r.count, 0);
+                  const pct = total === 0 ? 0 : Math.round((row.count / total) * 100);
+                  return (
+                    <li key={row.type}>
+                      <div className="flex items-baseline justify-between text-sm">
+                        <span className="capitalize text-neutral-700 dark:text-neutral-300">{row.type}</span>
+                        <span className="tabular-nums text-neutral-500 dark:text-neutral-400">{pct}%</span>
+                      </div>
+                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-800">
+                        <div
+                          className={`h-full rounded-full ${DOT_TONES[categoryTone(row.type)]}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </CardBody>

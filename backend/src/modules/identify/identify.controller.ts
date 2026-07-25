@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { asyncHandler } from '../../lib/asyncHandler.js';
 import { internal } from '../../lib/errors.js';
+import { getClientIp } from '../../lib/clientIp.js';
 import { identifyService } from './identify.service.js';
 
 export const identifyRouter = Router();
@@ -17,6 +18,9 @@ identifyRouter.post(
     const { contactId, linkedEvents } = await identifyService.identify(
       organizationId,
       req.body,
+      // Fallback geo source when the caller supplies no address; supplied
+      // values always take precedence (see identify.service.ts).
+      { ip: getClientIp(req) },
     );
 
     // 200, not 202: unlike /events this is synchronous and the caller acts

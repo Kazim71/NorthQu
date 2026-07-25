@@ -20,6 +20,32 @@ const envSchema = z.object({
 
   CORS_ORIGINS: z.string().default('*'),
 
+  // ---- ingestion enrichment (geo + device) ----
+  // Kill switch for the IP -> location lookup. Enabled by default because
+  // enrichment is the point of the feature; set 'false' to stop all outbound
+  // provider calls (events then store null location -> UI shows "Unknown").
+  // An explicit enum rather than z.coerce.boolean(), which would read the
+  // string 'false' as TRUE (any non-empty string is truthy).
+  GEOIP_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
+  // Aborts the provider HTTP request itself, so a hung connection can never
+  // leak a socket. Generous, because it is NOT what bounds ingestion latency.
+  GEOIP_TIMEOUT_MS: z.coerce.number().int().positive().default(4000),
+  // How long an ingestion will actually WAIT for a location before writing
+  // the event without one. Shorter than the request timeout on purpose: when
+  // it expires the lookup keeps running in the background and still warms the
+  // cache, so the visitor's next event is enriched. A slow provider therefore
+  // costs one unenriched event, never a slow endpoint. (Measured ~0.7-1.2s
+  // to ipwho.is from a dev machine, so 1500 normally resolves inline.)
+  GEOIP_MAX_WAIT_MS: z.coerce.number().int().positive().default(1500),
+  // An IP's city does not change hour to hour, so cache aggressively.
+  GEOIP_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(86_400),
+  // Shorter TTL for failed/unresolvable lookups so a transient provider
+  // outage doesn't blank out a whole day of enrichment.
+  GEOIP_NEGATIVE_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(600),
+
   // Shared secret Shopify signs every webhook with (Notifications settings,
   // or the app's API secret for app-registered webhooks). OPTIONAL on
   // purpose: the webhook endpoint isn't wired to a live store yet, and

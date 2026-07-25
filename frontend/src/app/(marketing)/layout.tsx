@@ -2,6 +2,7 @@ import { DM_Serif_Display } from 'next/font/google';
 import { SiteHeader } from '@/components/marketing/SiteHeader';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
 import { CursorGlow } from '@/components/marketing/CursorGlow';
+import { SmoothScroll } from '@/components/marketing/SmoothScroll';
 
 /**
  * Marketing-only display serif, loaded in this NESTED layout rather than
@@ -64,10 +65,12 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
     <div
       className={`${marketingDisplay.variable} flex min-h-screen flex-col bg-white text-black dark:bg-black dark:text-white`}
     >
-      <CursorGlow />
-      <SiteHeader />
-      <main className="flex-1">{children}</main>
-      <SiteFooter />
+      <SmoothScroll>
+        <CursorGlow />
+        <SiteHeader />
+        <main className="flex-1">{children}</main>
+        <SiteFooter />
+      </SmoothScroll>
     </div>
   );
 }

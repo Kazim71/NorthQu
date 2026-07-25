@@ -1,6 +1,7 @@
 import { requirePlatformAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { getContactCountsByOrg, getOrganizations, getPlatformEventsOverTime } from '@/lib/queries';
+import { rangeFromDays } from '@/lib/dateRange';
 import { CompanyGrid } from '@/components/CompanyGrid';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { EventsOverTimeChart } from '@/components/charts/EventsOverTimeChart';
@@ -11,13 +12,19 @@ export default async function SuperAdminPage() {
   await requirePlatformAdmin();
 
   const supabase = createClient();
+  // Fixed 14-day window, no picker on this overview page — the interactive
+  // date range picker (Phase 6) was scoped to the Leads/Anonymous
+  // Visitors/Summary views (per-org, where "what happened in this window"
+  // is the point); this platform-wide company list is a roster, not an
+  // activity view, so a fixed recent window for the chart is sufficient.
+  const platformRange = rangeFromDays(14);
   const [organizations, contactCounts, platformEvents] = await Promise.all([
     getOrganizations(supabase),
     getContactCountsByOrg(supabase),
     // Cross-org aggregate — the one deliberate exception to "every query
     // filters organization_id", documented in queries.ts. This is the
     // platform-wide view the super-admin role exists to see.
-    getPlatformEventsOverTime(supabase),
+    getPlatformEventsOverTime(supabase, platformRange),
   ]);
 
   return (

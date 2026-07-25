@@ -86,14 +86,30 @@ const TECHNOLOGY = [
  * reimplementing role resolution. Logged-in visitors (existing LeadPulse
  * customers/operators) never see this markup — they're redirected
  * straight to their workspace before anything below renders.
+ *
+ * `?home=1` BYPASSES that redirect. This is what every logo link in the
+ * app now points at ('/?home=1' — DashboardChrome's Brand, the marketing
+ * SiteHeader/SiteFooter, the login/signup pages), so "click the logo" means
+ * "show me the real public homepage" even for an already-authenticated
+ * visitor, rather than bouncing them straight back into /dashboard. Without
+ * this, a signed-in user could never actually SEE this page — the logo
+ * would be a no-op that always redirected them right back where they were.
  */
-export default async function LandingPage() {
+export default async function LandingPage({
+  searchParams,
+}: {
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
   const viewer = await getViewer();
+  const bypassRedirect = searchParams.home === '1';
 
-  if (viewer.kind === 'platform_admin') redirect('/super-admin');
-  if (viewer.kind === 'org_admin') redirect('/dashboard');
-  if (viewer.kind === 'unassigned') redirect('/pending');
-  // viewer.kind === 'anonymous' falls through to the landing page below.
+  if (!bypassRedirect) {
+    if (viewer.kind === 'platform_admin') redirect('/super-admin');
+    if (viewer.kind === 'org_admin') redirect('/dashboard');
+    if (viewer.kind === 'unassigned') redirect('/pending');
+  }
+  // viewer.kind === 'anonymous', or the redirect was bypassed, falls
+  // through to the landing page below.
 
   return (
     <div>

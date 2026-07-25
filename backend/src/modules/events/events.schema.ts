@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { EMPTY_GEO, type GeoLocation } from '../../lib/geoip.js';
+import { EMPTY_DEVICE, type DeviceInfo } from '../../lib/userAgent.js';
 
 /**
  * Event types the tracking snippet emits. Mirrors the SaleAssist naming
@@ -97,16 +99,43 @@ export interface EventRow {
   event_type: EventType;
   url: string | null;
   metadata: Record<string, unknown>;
+  // Enrichment, derived server-side from the request itself (never from the
+  // payload — a client must not be able to claim its own location). All
+  // nullable: a failed or impossible lookup stores null, which the dashboard
+  // renders as "Unknown".
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  pincode: string | null;
+  device_browser: string | null;
+  device_os: string | null;
+  device_type: string | null;
+}
+
+/**
+ * Request-derived enrichment, resolved by the controller before the service
+ * maps the row. Passed in rather than looked up here so this module stays
+ * pure/synchronous and trivially testable.
+ */
+export interface EventEnrichment {
+  geo: GeoLocation;
+  device: DeviceInfo;
 }
 
 /**
  * Maps a validated payload onto the events table shape.
  *
- * city/state/country/pincode are intentionally absent: location enrichment
- * is phase 6+. Leaving the columns null is honest; a stubbed geo lookup
- * would seed the table with data nobody could later distinguish from real.
+ * city/state/country/pincode WERE intentionally left null through phase 5
+ * ("a stubbed geo lookup would seed the table with data nobody could later
+ * distinguish from real"). Phase 6 populates them from a real IP lookup —
+ * and keeps the honesty guarantee by writing null, not a guess, whenever the
+ * lookup can't answer. Device fields follow the same rule.
  */
-export function toEventRow(organizationId: string, payload: EventPayload): EventRow {
+export function toEventRow(
+  organizationId: string,
+  payload: EventPayload,
+  enrichment: EventEnrichment = { geo: EMPTY_GEO, device: EMPTY_DEVICE },
+): EventRow {
   const { event_type, visitor_id, metadata: explicitMetadata, ...rest } = payload;
 
   const passthrough: Record<string, unknown> = {};
@@ -123,5 +152,12 @@ export function toEventRow(organizationId: string, payload: EventPayload): Event
     // the stored document keeps the exact snippet shape. Explicit metadata
     // is spread last and wins on key collision.
     metadata: { ...passthrough, ...(explicitMetadata ?? {}) },
+    city: enrichment.geo.city,
+    state: enrichment.geo.state,
+    country: enrichment.geo.country,
+    pincode: enrichment.geo.pincode,
+    device_browser: enrichment.device.browser,
+    device_os: enrichment.device.os,
+    device_type: enrichment.device.type,
   };
 }

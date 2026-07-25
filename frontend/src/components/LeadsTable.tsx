@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Badge, statusTone } from './ui/Badge';
 import { EmptyState } from './ui/EmptyState';
+import { ActivityTimeline } from './ActivityTimeline';
 import { markLeadMessaged, resetLeadMessaged } from '@/app/dashboard/actions';
 import { toCsv, downloadTextFile } from '@/lib/csv';
 import type { Lead } from '@/lib/queries';
@@ -186,33 +187,10 @@ export function LeadsTable({ leads, enableActions = false }: { leads: Lead[]; en
                     {isOpen ? (
                       <tr key={`${lead.id}-detail`} className="bg-white/70 dark:bg-black/40">
                         <td colSpan={colSpan} className="px-5 py-4">
-                          <p className="mb-3 text-2xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                            Recent activity
-                          </p>
-                          {lead.recentEvents.length === 0 ? (
-                            <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                              No events recorded for this lead yet.
-                            </p>
-                          ) : (
-                            <ol className="space-y-2">
-                              {lead.recentEvents.map((event) => (
-                                <li key={event.id} className="flex items-baseline gap-3 text-sm">
-                                  <span className="w-2 flex-none">
-                                    <span className="block h-1.5 w-1.5 rounded-full bg-cinnamon-500" />
-                                  </span>
-                                  <span className="font-medium text-neutral-800 dark:text-neutral-200">
-                                    {event.event_type}
-                                  </span>
-                                  <span className="truncate text-xs text-neutral-500 dark:text-neutral-400">
-                                    {event.url ?? ''}
-                                  </span>
-                                  <span className="ml-auto flex-none text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
-                                    {new Date(event.created_at).toLocaleString()}
-                                  </span>
-                                </li>
-                              ))}
-                            </ol>
-                          )}
+                          <ActivityTimeline
+                            events={lead.recentEvents}
+                            emptyMessage="No events recorded for this lead yet."
+                          />
                         </td>
                       </tr>
                     ) : null}

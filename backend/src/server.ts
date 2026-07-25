@@ -13,6 +13,13 @@ export const app = express();
 
 // Trust the proxy Supabase/Render/Fly sit behind so req.ip reflects the
 // real client rather than the load balancer.
+//
+// The `1` is a hop count, and it is load-bearing for location enrichment
+// (see lib/clientIp.ts): it means "one trusted proxy in front of us", so
+// Express takes the X-Forwarded-For entry that Render's proxy itself
+// observed rather than the leftmost, client-controllable one. If a CDN is
+// ever put IN FRONT of Render, this number must increase to match — an
+// unchanged `1` would silently start geolocating the CDN's egress IP.
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
