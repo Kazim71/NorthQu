@@ -342,13 +342,17 @@ export async function getEventCountTrend(
 /**
  * "Ready to contact" signal for the notification bell.
  *
- * HONEST LIMITATION: `contacts` has no `updated_at` / status-change
- * timestamp (see 0001_init_schema.sql), so there is no way to know exactly
- * when a contact's message_status became 'ready'. What IS real and
- * derivable: contacts currently marked 'ready' who were active (last_seen)
- * within the last 24 hours — i.e. "leads worth contacting who showed up
- * recently," not literally "became ready in the last 24h." That distinction
- * is surfaced in the UI copy, not just this comment.
+ * `message_status` is now COMPUTED on read (migration 0006): a Postgres
+ * function exposed by PostgREST as a virtual column, so filtering
+ * `.eq('message_status', 'ready')` genuinely derives the status rather than
+ * reading a stale stored value. 'ready' = never messaged AND has at least
+ * one event in the last 7 days.
+ *
+ * This signal further narrows to ready leads whose last identify (`last_seen`,
+ * which advances on identify, not on every event) was within 24h — i.e.
+ * "ready leads who showed up recently." It's still not literally "became
+ * ready in the last 24h" (there's no status-change timestamp), and that
+ * distinction is surfaced in the UI copy, not just this comment.
  */
 export async function getReadySignal(
   supabase: SupabaseClient,

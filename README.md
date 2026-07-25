@@ -1,8 +1,30 @@
-# Northcue
+# NorthQu
 
-_(repo/folder names remain `leadpulse` — that was the original working name. The product was rebranded once to "LeadCapsule" mid-project, then again to "Northcue"; user-facing text now says Northcue everywhere. Folder/repo names were deliberately left unchanged both times to avoid churn — see `docs/CHANGELOG.md` for exactly what each rebrand touched.)_
+NorthQu is a technology company that designs and builds software, AI
+automation, lead management systems and digital experiences for
+businesses. This repository holds **LeadPulse**, NorthQu's own
+lead-tracking and identity-resolution platform — one showcased,
+fully-built product under the NorthQu name, not the company's whole
+identity.
 
-Northcue is a multi-tenant lead-capture platform for e-commerce storefronts. A small tracking snippet sits on a client's site and records anonymous visitor behavior (page views, product views, searches, cart actions) against that client's own tenant. When the visitor later gives up a phone number or email — at checkout, in a form — the backend links that identity to everything they did anonymously before, so a business ends up with real leads and full context instead of just a form submission. A super-admin layer lets the platform owner onboard new client companies and see aggregate activity across all of them; each client's own admins only ever see their own data, enforced at the database level, not just in the UI.
+_(Folder/repo names throughout stay `leadpulse` — this codebase is
+LeadPulse specifically, the flagship product, while the public marketing
+site at `frontend/src/app/(marketing)/` presents NorthQu as the broader
+company with LeadPulse as one of several services. See
+`docs/CHANGELOG.md` for the full history of how the positioning got
+here.)_
+
+LeadPulse is a multi-tenant lead-capture platform for e-commerce
+storefronts. A small tracking snippet sits on a client's site and
+records anonymous visitor behavior (page views, product views, searches,
+cart actions) against that client's own tenant. When the visitor later
+gives up a phone number or email — at checkout, in a form — the backend
+links that identity to everything they did anonymously before, so a
+business ends up with real leads and full context instead of just a
+form submission. A super-admin layer lets the platform owner onboard new
+client companies and see aggregate activity across all of them; each
+client's own admins only ever see their own data, enforced at the
+database level, not just in the UI.
 
 ## Architecture
 
@@ -42,10 +64,13 @@ leadpulse/
 │   └── verify.sql         Manual RLS verification queries (Phase 1)
 ├── backend/               Express + TypeScript ingestion API — deployed, service_role
 ├── tracking-snippet/      Standalone JS tracker, built with esbuild, <5kb, no runtime deps
-├── frontend/              Next.js 14 dashboard (App Router) — anon key + RLS, local only
-└── docs/
-    ├── CHANGELOG.md       Dated log of what shipped, per phase and per task
-    └── TODO.md            Every explicitly-flagged deferred/blocked item, consolidated
+└── frontend/              Next.js 14 site (App Router) — anon key + RLS, local only
+    └── src/app/
+        ├── (marketing)/   Public NorthQu site — home, /services, /services/leadpulse,
+        │                  /about, /pricing, /insights, /contact
+        ├── login/, signup/, pending/    Auth entry points (LeadPulse customers)
+        ├── dashboard/     Org-admin workspace (LeadPulse leads/events)
+        └── super-admin/   Platform-operator workspace (cross-tenant oversight)
 ```
 
 ## Current status
@@ -53,9 +78,9 @@ leadpulse/
 **Built, deployed, and verified** (against live Supabase + live Render, not mocked):
 
 - **Schema** (`supabase/migrations/0001, 0002, 0003`): `organizations`, `admin_users`, `contacts`, `events`, `visitor_identity_map`, RLS on all of them, plus `platform_admins` and `is_platform_admin()` for the cross-org super-admin role. Verified: tenant isolation on read AND write, default-deny for users with no role, super-admin read access without write access.
-- **Backend API** (`backend/`): `POST /api/events`, `POST /api/identify`, deployed on Render at the URL in `backend/.env` (`SUPABASE_URL`) and referenced throughout `docs/CHANGELOG.md`. Rate limiting, org resolution caching, structured logging, centralized error handling. Verified end-to-end against the live deployment, including the atomic identify→backfill path.
-- **Tracking snippet** (`tracking-snippet/`): builds to 4.41kb minified, visitor-id persistence (localStorage + cookie), client-side debounce, public `window.leadpulse.track()/.identify()` API with a pre-init queue. Verified with a real headless-Chrome run against the live backend, including the debounce and persistence checks done by counting actual DB rows, not by trusting the code path.
-- **Dashboard** (`frontend/`): two-tier auth (`/dashboard` for org admins, `/super-admin` for platform admins), real Supabase queries (no mocked data), a provisioning flow for creating organizations and inviting admins, a custom warm-neutral + pastel-accent design system, dark mode. Verified with real logins against live RLS policies and a full headless-browser run of the provisioning flow. **Not deployed anywhere** — local only so far.
+- **Backend API** (`backend/`): `POST /api/events`, `POST /api/identify`, deployed on Render at the URL in `backend/.env` (`SUPABASE_URL`). Rate limiting, org resolution caching, structured logging, centralized error handling. Verified end-to-end against the live deployment, including the atomic identify→backfill path.
+- **Tracking snippet** (`tracking-snippet/`): builds to a few kb minified, visitor-id persistence (localStorage + cookie), client-side debounce, public `window.leadpulse.track()/.identify()` API with a pre-init queue. Verified with a real headless-Chrome run against the live backend, including the debounce and persistence checks done by counting actual DB rows, not by trusting the code path.
+- **Dashboard + marketing site** (`frontend/`): two-tier auth (`/dashboard` for org admins, `/super-admin` for platform admins), real Supabase queries (no mocked data), a provisioning flow for creating organizations and inviting admins, a NorthQu-branded design system (Cinnamon Wood accent, Space Indigo footer), dark mode. The public site presents NorthQu as a technology company with LeadPulse as one of its services. Verified with real logins against live RLS policies and a full headless-browser run of the provisioning flow. **Dashboard not deployed anywhere** — local only so far.
 
 **Explicitly not built** — see `docs/TODO.md` for the full list with context. Highlights: no Shopify integration (the snippet has never touched a real storefront), no CSV export or activity-timeline polish on the leads table, `inviteUserByEmail` is blocked on SMTP configuration so admin invites hand back a temp password instead of sending an email, no idempotency keys or retry logic on ingestion (both deliberately deferred as premature for the current scale).
 
@@ -67,14 +92,14 @@ leadpulse/
 | Supabase project | Project ref `pehqfpeerlvqssqlvxgh` — see `backend/.env` / `frontend/.env.local` for the URL |
 | Deployed dashboard | Not deployed — run locally per the steps below |
 | Backend source | `backend/src/` |
-| Dashboard source | `frontend/src/` |
+| Frontend source (marketing site + dashboard) | `frontend/src/` |
 | Schema history | `supabase/migrations/` (apply in numeric order via the Supabase SQL editor) |
 
 ## Local setup
 
 Requires Node ≥ 20 (the codebase depends on the `ws` package as a Node-20-compatible transport for `@supabase/supabase-js`'s realtime client — see comments in `backend/src/config/supabaseClient.ts` and `frontend/src/lib/supabase/server.ts` for why).
 
-1. **Database**: in the Supabase SQL editor, run `supabase/migrations/0001_init_schema.sql`, then `0002_identify_fn.sql`, then `0003_super_admin.sql`, in that order. Optionally run `supabase/seed.sql` for test data (read the comments inside it — it needs a real `auth.users` UUID pasted in before the `platform_admins` insert will work).
+1. **Database**: in the Supabase SQL editor, run `supabase/migrations/0001_init_schema.sql`, then `0002_identify_fn.sql`, then `0003_super_admin.sql`, then `0004_contact_inquiries.sql`, in that order. Optionally run `supabase/seed.sql` for test data (read the comments inside it — it needs a real `auth.users` UUID pasted in before the `platform_admins` insert will work).
 2. **Backend**:
    ```bash
    cd backend
@@ -90,7 +115,7 @@ Requires Node ≥ 20 (the codebase depends on the `ws` package as a Node-20-comp
    npm run build            # -> dist/leadpulse-tracker.min.js
    ```
    Open `tracking-snippet/test/local.html` directly in a browser to test against a running backend. See `tracking-snippet/TESTING.md`.
-4. **Dashboard**:
+4. **Frontend** (marketing site + dashboard):
    ```bash
    cd frontend
    npm install
@@ -101,4 +126,4 @@ Requires Node ≥ 20 (the codebase depends on the `ws` package as a Node-20-comp
 
 ## Docs convention (standing instruction)
 
-At the end of every task performed in this repo, append a dated entry to `docs/CHANGELOG.md` summarizing what changed, and update `docs/TODO.md` if anything was resolved or newly flagged as deferred/blocked. This happens automatically, without being asked each time — it is not optional per-task documentation, it is how this project tracks its own history.
+At the end of every task performed in this repo, append a dated entry to `docs/CHANGELOG.md` summarizing what changed, and update `docs/TODO.md` if anything was resolved or newly flagged as deferred/blocked. This happens automatically, without being asked each time — it is not optional per-task documentation, it is how this project tracks its own history. `docs/` is gitignored (internal working notes, not meant for the public repo) but still maintained locally for exactly this reason.

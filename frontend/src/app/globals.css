@@ -21,3 +21,18 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* Hero service ticker: two copies of the same track sit side by side and
+   scroll together by exactly one copy's width, so the loop seam is
+   invisible. */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.animate-marquee {
+  animation: marquee 28s linear infinite;
+}

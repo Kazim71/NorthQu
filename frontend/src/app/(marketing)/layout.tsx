@@ -37,11 +37,14 @@ const marketingDisplay = DM_Serif_Display({
 });
 
 /**
- * Wraps the five public pages only — "/", /about, /contact, /features,
- * /product. A route group ("(marketing)") adds no URL segment, so
- * (marketing)/page.tsx still serves "/" and (marketing)/about/page.tsx
- * still serves "/about". /login, /dashboard, /super-admin sit outside this
- * group and keep their own AppShell chrome, untouched.
+ * Wraps the public marketing pages only — "/", /about, /contact, /services,
+ * /services/leadpulse, /pricing, /insights. A route group ("(marketing)")
+ * adds no URL segment, so (marketing)/page.tsx still serves "/" and
+ * (marketing)/about/page.tsx still serves "/about". /login, /dashboard,
+ * /super-admin sit outside this group and keep their own AppShell chrome,
+ * untouched. (/features and /product now redirect to /services/leadpulse
+ * via next.config.mjs, from when LeadPulse was the whole company's
+ * identity rather than one NorthQu offering.)
  *
  * LIGHT BY DEFAULT, DARK SUPPORTED — REVERSED 2026-07-21, THEN CORRECTED
  * THE SAME DAY. First pass made dark mode use the `marketing.*` Space

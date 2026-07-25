@@ -14,7 +14,7 @@ export default async function LeadsPage() {
   return (
     <div className="space-y-6">
       <PageHeading title="Leads" subtitle={`${leads.length} known ${leads.length === 1 ? 'contact' : 'contacts'}`} />
-      <LeadsTable leads={leads} />
+      <LeadsTable leads={leads} enableActions />
     </div>
   );
 }

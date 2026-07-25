@@ -2,33 +2,28 @@ export default function AboutPage() {
   return (
     <section className="mx-auto max-w-2xl px-6 py-24">
       <h1 className="font-marketingDisplay text-5xl leading-tight text-black dark:text-white sm:text-6xl">
-        About NorthQu
+        Direction before complexity.
       </h1>
 
       <div className="mt-10 space-y-6 border-l border-neutral-200 dark:border-neutral-800 pl-7 text-lg leading-relaxed text-neutral-600 dark:text-neutral-400">
         <p>
-          Every e-commerce or SaaS storefront can tell you what someone bought.
-          Almost none of them can tell you about the visit that almost turned
-          into a purchase — the product page someone lingered on, the search
-          that didn&rsquo;t convert, the cart they filled and abandoned. That
-          browsing history exists in your analytics somewhere, but it&rsquo;s
-          disconnected from any real person until they hand over a phone
-          number or email.
+          NorthQu is a technology company focused on helping businesses move forward through
+          better software, intelligent automation and connected digital systems. The name
+          reflects how we approach technology: understand the question, find the right
+          direction, and build what creates meaningful progress.
         </p>
         <p>
-          NorthQu captures that anonymous behavior as it happens — page
-          views, searches, product interest, cart activity — and holds onto
-          it. The moment a visitor identifies themselves, at checkout, in a
-          WhatsApp message, on a contact form, their entire prior browsing
-          history links to that one contact. What was previously a stranger
-          browsing your site becomes a lead with a complete activity trail
-          attached, ready to be messaged.
+          Most businesses aren&rsquo;t short on tools — they&rsquo;re short on tools that work
+          together. Websites, spreadsheets, CRMs and manual processes tend to grow up
+          independently of each other, and the gaps between them are where time, leads and
+          opportunities quietly disappear. We start by understanding where that&rsquo;s
+          happening before we decide what to build.
         </p>
         <p>
-          It&rsquo;s built as a multi-tenant platform: each client organization&rsquo;s
-          data is isolated at the database level, not just hidden behind a
-          login screen, so the same system serves multiple storefronts
-          without their leads ever mixing.
+          That approach shows up in what we build: custom software and internal tools, AI and
+          workflow automation, websites and digital experiences, and lead and CRM systems.
+          LeadPulse — our lead tracking and identity resolution platform — is one product of
+          that approach, not the whole of it.
         </p>
       </div>
     </section>

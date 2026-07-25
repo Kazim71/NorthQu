@@ -7,6 +7,7 @@ import { rateLimiter } from './middleware/rateLimiter.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { eventsRouter } from './modules/events/events.controller.js';
 import { identifyRouter } from './modules/identify/identify.controller.js';
+import { shopifyWebhookRouter } from './modules/webhooks/shopify.controller.js';
 
 export const app = express();
 
@@ -30,6 +31,15 @@ app.use(
     maxAge: 86_400,
   }),
 );
+
+// Shopify webhook — mounted BEFORE the global express.json() below, because
+// HMAC verification needs the raw request bytes and this router parses the
+// body itself with express.raw. It sits OUTSIDE the /api tenant router: a
+// Shopify request carries no x-api-key (resolveOrg) and no visitor_id
+// (rateLimiter), so it resolves its tenant from the shop domain instead.
+// A path under /api/webhooks/... is matched here first and never reaches the
+// tenant router mounted at /api below.
+app.use('/api/webhooks/shopify', shopifyWebhookRouter);
 
 // 100kb: event payloads are a URL plus a handful of products. Anything
 // larger is a bug or an attack, and rejecting early keeps a malformed

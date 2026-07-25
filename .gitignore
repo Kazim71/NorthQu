@@ -4,3 +4,36 @@ tracking-snippet/node_modules/
 backend/node_modules/
 *.log
 .DS_Store
+
+# =====================================================================
+# Internal-only documentation and process artifacts — excluded so this
+# repo can be made public or shared externally without exposing dev
+# history, per-client integration details, or session-scoped debugging
+# aids. README.md at repo root is DELIBERATELY NOT covered by any rule
+# below — it is the project's public-facing overview and must stay
+# visible. Reviewed 2026-07-25; keep this list itemized (no blanket
+# `*.md` or similar) so every exclusion is a deliberate, visible decision.
+# =====================================================================
+
+# Dated dev history/handoff (CHANGELOG, TODO, SESSION_HANDOFF, and any
+# other internal doc placed in docs/ — e.g. shopify-integration-log.md).
+# Still maintained locally per the Docs convention in README.md; this
+# folder is process history, not public-facing documentation.
+docs/
+
+# Ad-hoc verification scripts (Puppeteer/manual, session-specific
+# debugging aids referencing internal decisions) — not a real test suite.
+frontend/test/
+tracking-snippet/test/
+backend/test/
+
+# Manual test-plan / QA runbooks — internal process notes, not
+# public-facing docs.
+backend/TESTING.md
+tracking-snippet/TESTING.md
+
+# Per-client Shopify integration notes (real client name, real theme file
+# names, store-specific gotchas) — client-identifying detail that has no
+# reason to be in a public repo.
+tracking-snippet/shopify-integration.md
+tracking-snippet/shopify-webhook-integration.md

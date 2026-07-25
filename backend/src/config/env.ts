@@ -19,6 +19,16 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
 
   CORS_ORIGINS: z.string().default('*'),
+
+  // Shared secret Shopify signs every webhook with (Notifications settings,
+  // or the app's API secret for app-registered webhooks). OPTIONAL on
+  // purpose: the webhook endpoint isn't wired to a live store yet, and
+  // hard-requiring it would break the boot of every existing deploy that
+  // doesn't process webhooks. The /api/webhooks/shopify/checkout handler
+  // fails closed with a 503 if a webhook arrives while this is unset — so a
+  // missing secret can never be mistaken for a valid signature. Make it
+  // required here once a store is actually connected.
+  SHOPIFY_WEBHOOK_SECRET: z.string().min(1).optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
