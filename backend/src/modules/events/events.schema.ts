@@ -103,6 +103,8 @@ export interface EventRow {
   // payload — a client must not be able to claim its own location). All
   // nullable: a failed or impossible lookup stores null, which the dashboard
   // renders as "Unknown".
+  /** Raw client IP. Null for private/loopback ranges (see getClientIp). */
+  ip_address: string | null;
   city: string | null;
   state: string | null;
   country: string | null;
@@ -120,6 +122,8 @@ export interface EventRow {
 export interface EventEnrichment {
   geo: GeoLocation;
   device: DeviceInfo;
+  /** The normalized public client IP the geo lookup was performed against. */
+  ip: string | null;
 }
 
 /**
@@ -134,7 +138,7 @@ export interface EventEnrichment {
 export function toEventRow(
   organizationId: string,
   payload: EventPayload,
-  enrichment: EventEnrichment = { geo: EMPTY_GEO, device: EMPTY_DEVICE },
+  enrichment: EventEnrichment = { geo: EMPTY_GEO, device: EMPTY_DEVICE, ip: null },
 ): EventRow {
   const { event_type, visitor_id, metadata: explicitMetadata, ...rest } = payload;
 
@@ -152,6 +156,7 @@ export function toEventRow(
     // the stored document keeps the exact snippet shape. Explicit metadata
     // is spread last and wins on key collision.
     metadata: { ...passthrough, ...(explicitMetadata ?? {}) },
+    ip_address: enrichment.ip,
     city: enrichment.geo.city,
     state: enrichment.geo.state,
     country: enrichment.geo.country,

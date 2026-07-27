@@ -3,16 +3,14 @@ import { notFound } from 'next/navigation';
 import { requirePlatformAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import {
-  getAnonymousVisitors,
   getEventCountTrend,
   getEventsOverTime,
-  getLeads,
   getOrganization,
   getOrgSummary,
+  getVisitors,
 } from '@/lib/queries';
 import { parseDateRangeFromSearchParams } from '@/lib/dateRange';
-import { LeadsTable } from '@/components/LeadsTable';
-import { AnonymousVisitorsTable } from '@/components/AnonymousVisitorsTable';
+import { VisitorsTable } from '@/components/VisitorsTable';
 import { SummaryPanel } from '@/components/SummaryPanel';
 import { DateRangePicker } from '@/components/DateRangePicker';
 
@@ -45,9 +43,8 @@ export default async function SuperAdminOrgPage({
 
   const range = parseDateRangeFromSearchParams(searchParams);
 
-  const [leads, anonymousVisitors, summary, eventsOverTime, eventTrend] = await Promise.all([
-    getLeads(supabase, params.organizationId, range),
-    getAnonymousVisitors(supabase, params.organizationId, range),
+  const [visitors, summary, eventsOverTime, eventTrend] = await Promise.all([
+    getVisitors(supabase, params.organizationId, range),
     getOrgSummary(supabase, params.organizationId, range),
     getEventsOverTime(supabase, params.organizationId, range),
     getEventCountTrend(supabase, params.organizationId, range),
@@ -74,18 +71,13 @@ export default async function SuperAdminOrgPage({
       <SummaryPanel summary={summary} eventsOverTime={eventsOverTime} eventTrend={eventTrend} />
 
       <div>
-        <h2 className="mb-4 font-display text-2xl text-black dark:text-white">Leads</h2>
-        <LeadsTable leads={leads} />
-      </div>
-
-      <div>
         <h2 className="mb-4 font-display text-2xl text-black dark:text-white">
-          Anonymous Visitors{' '}
+          Visitors{' '}
           <span className="text-base font-normal text-neutral-500 dark:text-neutral-400">
-            ({anonymousVisitors.length})
+            ({visitors.length})
           </span>
         </h2>
-        <AnonymousVisitorsTable visitors={anonymousVisitors} />
+        <VisitorsTable visitors={visitors} />
       </div>
     </div>
   );

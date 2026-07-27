@@ -67,6 +67,31 @@ export interface OrgSummary {
   deviceBreakdown: { type: string; count: number }[];
 }
 
+/**
+ * One row of the UNIFIED dashboard: a visitor, identified or not. Contact
+ * fields are null for anyone who hasn't identified themselves yet — the UI
+ * renders those as "—" rather than pretending the data exists.
+ */
+export interface Visitor {
+  visitorId: string;
+  contactId: string | null;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  firstSeen: string;
+  lastSeen: string;
+  eventCount: number;
+  pageCount: number;
+  ipAddress: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  deviceBrowser: string | null;
+  deviceOs: string | null;
+  deviceType: string | null;
+  recentEvents: AnonymousVisitorEvent[];
+}
+
 export interface AnonymousVisitorEvent {
   id: string;
   event_type: string;
@@ -540,5 +565,92 @@ export async function getAnonymousVisitors(
     deviceOs: r.device_os,
     deviceType: r.device_type,
     recentEvents: (byVisitor.get(r.visitor_id) ?? []).slice(0, 8),
+  }));
+}
+
+// =====================================================================
+// Unified visitors — Phase 7. Supersedes the split getLeads() /
+// getAnonymousVisitors() pair for the dashboard's single table. Backed by
+// get_visitors() (migration 0008), which range-filters events BEFORE
+// aggregating so the counts describe the selected window honestly.
+// =====================================================================
+
+interface VisitorRpcRow {
+  visitor_id: string;
+  contact_id: string | null;
+  contact_name: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
+  first_seen: string;
+  last_seen: string;
+  event_count: number;
+  page_count: number;
+  ip_address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  device_browser: string | null;
+  device_os: string | null;
+  device_type: string | null;
+}
+
+export async function getVisitors(
+  supabase: SupabaseClient,
+  organizationId: string,
+  range: DateRange,
+): Promise<Visitor[]> {
+  const { data, error } = await supabase.rpc('get_visitors', {
+    p_organization_id: organizationId,
+    p_from: range.from.toISOString(),
+    p_to: range.to.toISOString(),
+  });
+
+  if (error) throw new Error(`Failed to load visitors: ${error.message}`);
+
+  const rows = (data ?? []) as VisitorRpcRow[];
+  if (rows.length === 0) return [];
+
+  // One batched query for every visitor's activity trail, grouped in
+  // memory — same pattern as getLeads(), not one query per row.
+  const visitorIds = rows.map((r) => r.visitor_id);
+  const { data: events, error: eventsError } = await supabase
+    .from('events')
+    .select('id, visitor_id, event_type, url, created_at, metadata')
+    .eq('organization_id', organizationId)
+    .in('visitor_id', visitorIds)
+    .gte('created_at', range.from.toISOString())
+    .lte('created_at', range.to.toISOString())
+    .order('created_at', { ascending: false })
+    .limit(2000);
+
+  if (eventsError) throw new Error(`Failed to load visitor events: ${eventsError.message}`);
+
+  const byVisitor = new Map<string, AnonymousVisitorEvent[]>();
+  for (const e of (events ?? []) as (AnonymousVisitorEvent & { visitor_id: string })[]) {
+    const list = byVisitor.get(e.visitor_id) ?? [];
+    list.push({ id: e.id, event_type: e.event_type, url: e.url, created_at: e.created_at, metadata: e.metadata });
+    byVisitor.set(e.visitor_id, list);
+  }
+
+  return rows.map((r) => ({
+    visitorId: r.visitor_id,
+    contactId: r.contact_id,
+    name: r.contact_name,
+    phone: r.contact_phone,
+    email: r.contact_email,
+    firstSeen: r.first_seen,
+    lastSeen: r.last_seen,
+    // Counts come from the RPC (true totals over the range), not from the
+    // capped detail fetch above — recentEvents is only for the trail.
+    eventCount: r.event_count,
+    pageCount: r.page_count,
+    ipAddress: r.ip_address,
+    city: r.city,
+    state: r.state,
+    country: r.country,
+    deviceBrowser: r.device_browser,
+    deviceOs: r.device_os,
+    deviceType: r.device_type,
+    recentEvents: (byVisitor.get(r.visitor_id) ?? []).slice(0, 25),
   }));
 }

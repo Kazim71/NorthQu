@@ -57,7 +57,7 @@ export const eventsService = {
       Promise.resolve(parseUserAgent(context.userAgent)),
     ]);
 
-    const row = toEventRow(organizationId, parsed.data, { geo, device });
+    const row = toEventRow(organizationId, parsed.data, { geo, device, ip: context.ip });
     const eventId = await eventsRepository.insert(row);
 
     logger.info('event ingested', {

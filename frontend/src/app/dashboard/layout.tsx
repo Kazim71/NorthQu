@@ -2,7 +2,7 @@ import { requireOrgAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { getOrganization, getReadySignal } from '@/lib/queries';
 import { AppShell } from '@/components/AppShell';
-import { AnonymousIcon, LeadsIcon, SummaryIcon } from '@/components/icons';
+import { LeadsIcon, SummaryIcon } from '@/components/icons';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Gate runs before any child renders. organizationId comes from the
@@ -17,8 +17,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <AppShell
       navItems={[
-        { href: '/dashboard', label: 'Leads', icon: <LeadsIcon /> },
-        { href: '/dashboard/anonymous', label: 'Anonymous Visitors', icon: <AnonymousIcon /> },
+        // One unified "Visitors" entry — the separate Leads / Anonymous
+        // Visitors split was merged into a single table (VisitorsTable).
+        { href: '/dashboard', label: 'Visitors', icon: <LeadsIcon /> },
         { href: '/dashboard/summary', label: 'Summary', icon: <SummaryIcon /> },
       ]}
       contextLabel={org?.name ?? 'Your organization'}

@@ -78,6 +78,18 @@ const server = app.listen(env.PORT, () => {
     port: env.PORT,
     node_env: env.NODE_ENV,
   });
+
+  // Deliberate, one-line, unambiguous startup log. Without it, "GeoIP
+  // disabled" and "GeoIP enabled but every lookup is failing" are
+  // indistinguishable in the logs — lookupIp() returns EMPTY_GEO silently
+  // in the disabled case (see lib/geoip.ts), logging nothing at all. This
+  // line means a deploy's config is knowable from the top of its log
+  // output, not inferred from an absence of warnings.
+  logger.info('geoip enrichment config', {
+    enabled: env.GEOIP_ENABLED,
+    max_wait_ms: env.GEOIP_MAX_WAIT_MS,
+    provider: 'ipwho.is',
+  });
 });
 
 function shutdown(signal: string): void {
