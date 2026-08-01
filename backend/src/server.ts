@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { env } from './config/env.js';
 import { logger, serializeError } from './lib/logger.js';
 import { resolveOrg } from './middleware/resolveOrg.js';
@@ -25,10 +26,25 @@ app.disable('x-powered-by');
 
 // ---------------------------------------------------------------------
 // Middleware order matters and is load-bearing:
-//   cors -> json body parser -> resolveOrg -> rateLimiter -> routes -> errors
+//   helmet -> cors -> json body parser -> resolveOrg -> rateLimiter -> routes -> errors
 // rateLimiter keys on visitor_id from the body, so it must come after the
 // parser; it needs organizationId, so it must come after resolveOrg.
 // ---------------------------------------------------------------------
+
+app.use(
+  helmet({
+    // This API returns only JSON, never HTML — a document-oriented policy
+    // (script-src, style-src, etc.) has nothing to constrain here and would
+    // just be unused header bloat. The header-based protections below
+    // (nosniff, frameguard, HSTS) are the ones that actually apply to a JSON
+    // API and stay on.
+    contentSecurityPolicy: false,
+    // Every request is deliberately cross-origin: the tracking snippet is
+    // embedded on arbitrary client storefronts, mirroring the `cors: true`
+    // policy below. Helmet's default same-origin CORP would fight that.
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }),
+);
 
 app.use(
   cors({
