@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { ActivityTimeline } from './ActivityTimeline';
 import { EmptyState } from './ui/EmptyState';
 import { toCsv, downloadTextFile } from '@/lib/csv';
+import { scoreVisitor, toDialable, type LeadScore } from '@/lib/leadScore';
 import type { Visitor } from '@/lib/queries';
 
 /**
@@ -39,9 +40,24 @@ const FILTER_LABEL: Record<Filter, string> = {
 /** Em dash for absent data — one constant so it's consistent everywhere. */
 const NONE = '—';
 
+const SORTS = ['recent', 'priority'] as const;
+type Sort = (typeof SORTS)[number];
+
+const SORT_LABEL: Record<Sort, string> = {
+  recent: 'Most recent',
+  priority: 'Highest priority',
+};
+
+const BAND_STYLE: Record<LeadScore['band'], string> = {
+  hot: 'bg-cinnamon-100 text-cinnamon-800 dark:bg-cinnamon-900/50 dark:text-cinnamon-200',
+  warm: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200',
+  cool: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400',
+};
+
 export function VisitorsTable({ visitors }: { visitors: Visitor[] }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
+  const [sort, setSort] = useState<Sort>('recent');
 
   const counts = useMemo(
     () => ({
@@ -52,18 +68,51 @@ export function VisitorsTable({ visitors }: { visitors: Visitor[] }) {
     [visitors],
   );
 
+  /**
+   * Scored once per visitor list, not per render of each row: scoreVisitor
+   * walks every visitor's event trail, so doing it inline in the map would
+   * redo that work on every keystroke of the filter.
+   *
+   * `new Date()` is captured once here for the same reason it matters in
+   * scoreVisitor — every row must be scored against the SAME "now", or two
+   * visitors seen a millisecond apart could land in different recency
+   * bands purely from evaluation order.
+   */
+  const scores = useMemo(() => {
+    const now = new Date();
+    const map = new Map<string, LeadScore>();
+    for (const v of visitors) map.set(v.visitorId, scoreVisitor(v, now));
+    return map;
+  }, [visitors]);
+
   const filtered = useMemo(() => {
-    if (filter === 'identified') return visitors.filter((v) => v.contactId !== null);
-    if (filter === 'anonymous') return visitors.filter((v) => v.contactId === null);
-    return visitors;
-  }, [visitors, filter]);
+    const base =
+      filter === 'identified'
+        ? visitors.filter((v) => v.contactId !== null)
+        : filter === 'anonymous'
+          ? visitors.filter((v) => v.contactId === null)
+          : visitors;
+
+    // The server already returns most-recent-first, so 'recent' needs no
+    // client-side sort — re-sorting identical keys would only risk
+    // disturbing that order.
+    if (sort !== 'priority') return base;
+
+    return [...base].sort((a, b) => {
+      const diff = (scores.get(b.visitorId)?.score ?? 0) - (scores.get(a.visitorId)?.score ?? 0);
+      // Ties broken by recency so the order stays stable and meaningful
+      // rather than falling back on arbitrary array position.
+      return diff !== 0 ? diff : +new Date(b.lastSeen) - +new Date(a.lastSeen);
+    });
+  }, [visitors, filter, sort, scores]);
 
   function handleExport() {
     const headers = [
-      'Name', 'Phone', 'Email', 'Visitor ID', 'IP address', 'City', 'State', 'Country',
+      'Priority', 'Name', 'Phone', 'Email', 'Visitor ID', 'IP address', 'City', 'State', 'Country',
       'Device', 'OS', 'Browser', 'Events', 'Pages', 'First seen', 'Last seen',
     ];
     const rows = filtered.map((v) => [
+      scores.get(v.visitorId)?.score ?? 0,
       v.name ?? '', v.phone ?? '', v.email ?? '', v.visitorId, v.ipAddress ?? '',
       v.city ?? '', v.state ?? '', v.country ?? '',
       v.deviceType ?? '', v.deviceOs ?? '', v.deviceBrowser ?? '',
@@ -98,9 +147,23 @@ export function VisitorsTable({ visitors }: { visitors: Visitor[] }) {
             {FILTER_LABEL[f]} <span className="tabular-nums opacity-70">{counts[f]}</span>
           </button>
         ))}
+        <label className="ml-auto flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+          <span>Sort</span>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as Sort)}
+            className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-600 dark:border-neutral-700 dark:bg-black dark:text-neutral-300"
+          >
+            {SORTS.map((s) => (
+              <option key={s} value={s}>
+                {SORT_LABEL[s]}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           onClick={handleExport}
-          className="ml-auto rounded-full border border-neutral-200 px-4 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:border-cinnamon-500 hover:text-cinnamon-600 dark:border-neutral-700 dark:text-neutral-300 dark:hover:border-cinnamon-400 dark:hover:text-cinnamon-400"
+          className="rounded-full border border-neutral-200 px-4 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:border-cinnamon-500 hover:text-cinnamon-600 dark:border-neutral-700 dark:text-neutral-300 dark:hover:border-cinnamon-400 dark:hover:text-cinnamon-400"
         >
           Export CSV
         </button>
@@ -110,6 +173,7 @@ export function VisitorsTable({ visitors }: { visitors: Visitor[] }) {
         <table className="w-full min-w-[1100px] text-left text-sm">
           <thead>
             <tr className="border-b border-neutral-200 bg-white text-2xs uppercase tracking-wider text-neutral-500 dark:border-neutral-800 dark:bg-black/50 dark:text-neutral-400">
+              <th className="px-4 py-3 font-medium">Priority</th>
               <th className="px-4 py-3 font-medium">Contact</th>
               <th className="px-4 py-3 font-medium">Visitor ID</th>
               <th className="px-4 py-3 font-medium">IP address</th>
@@ -124,7 +188,7 @@ export function VisitorsTable({ visitors }: { visitors: Visitor[] }) {
           <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-sm text-neutral-500 dark:text-neutral-400">
+                <td colSpan={10} className="px-4 py-10 text-center text-sm text-neutral-500 dark:text-neutral-400">
                   No {filter} visitors in this range.
                 </td>
               </tr>
@@ -135,6 +199,8 @@ export function VisitorsTable({ visitors }: { visitors: Visitor[] }) {
                 const location = [v.city, v.state, v.country].filter(Boolean).join(', ') || NONE;
                 const device =
                   [v.deviceBrowser, v.deviceOs].filter(Boolean).join(' · ') || NONE;
+                const lead = scores.get(v.visitorId);
+                const dialable = toDialable(v.phone);
                 return (
                   <>
                     <tr
@@ -142,9 +208,26 @@ export function VisitorsTable({ visitors }: { visitors: Visitor[] }) {
                       onClick={() => setExpanded(isOpen ? null : v.visitorId)}
                       className="cursor-pointer transition-colors hover:bg-cinnamon-50/60 dark:hover:bg-neutral-800/50"
                     >
+                      {/*
+                        Score with its reasons in the tooltip. An unexplained
+                        number would be unauditable — the reasons are what let
+                        someone check the ranking against the row they can see.
+                      */}
+                      <td className="px-4 py-3.5">
+                        {lead ? (
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${BAND_STYLE[lead.band]}`}
+                            title={lead.reasons.join('\n')}
+                          >
+                            {lead.score}
+                          </span>
+                        ) : (
+                          <span className="text-neutral-400 dark:text-neutral-500">{NONE}</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3.5">
                         {identified ? (
-                          <div className="flex flex-col">
+                          <div className="flex flex-col gap-0.5">
                             <span className="font-medium text-black dark:text-neutral-100">
                               {v.name ?? 'Unnamed lead'}
                             </span>
@@ -153,6 +236,51 @@ export function VisitorsTable({ visitors }: { visitors: Visitor[] }) {
                             ) : null}
                             {v.email ? (
                               <span className="text-xs text-neutral-600 dark:text-neutral-400">{v.email}</span>
+                            ) : null}
+
+                            {/*
+                              stopPropagation on every action: the row itself
+                              toggles the activity timeline, and a click that
+                              both dialled a number and collapsed the row
+                              would be a nasty surprise.
+
+                              Rendered only when toDialable() returns a usable
+                              number — a tel: link built from a malformed
+                              string dials something wrong, which is worse
+                              than showing no button.
+                            */}
+                            {dialable || v.email ? (
+                              <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                                {dialable ? (
+                                  <>
+                                    <a
+                                      href={`tel:${dialable}`}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="rounded-full border border-neutral-200 px-2 py-0.5 text-2xs font-medium text-neutral-600 transition-colors hover:border-cinnamon-500 hover:text-cinnamon-700 dark:border-neutral-700 dark:text-neutral-300 dark:hover:border-cinnamon-400 dark:hover:text-cinnamon-300"
+                                    >
+                                      Call
+                                    </a>
+                                    <a
+                                      href={`https://wa.me/${dialable}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="rounded-full border border-neutral-200 px-2 py-0.5 text-2xs font-medium text-neutral-600 transition-colors hover:border-emerald-500 hover:text-emerald-700 dark:border-neutral-700 dark:text-neutral-300 dark:hover:border-emerald-400 dark:hover:text-emerald-300"
+                                    >
+                                      WhatsApp
+                                    </a>
+                                  </>
+                                ) : null}
+                                {v.email ? (
+                                  <a
+                                    href={`mailto:${v.email}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="rounded-full border border-neutral-200 px-2 py-0.5 text-2xs font-medium text-neutral-600 transition-colors hover:border-violet-500 hover:text-violet-700 dark:border-neutral-700 dark:text-neutral-300 dark:hover:border-violet-400 dark:hover:text-violet-300"
+                                  >
+                                    Email
+                                  </a>
+                                ) : null}
+                              </span>
                             ) : null}
                           </div>
                         ) : (
@@ -187,7 +315,7 @@ export function VisitorsTable({ visitors }: { visitors: Visitor[] }) {
 
                     {isOpen ? (
                       <tr key={`${v.visitorId}-detail`} className="bg-white/70 dark:bg-black/40">
-                        <td colSpan={9} className="px-4 py-4">
+                        <td colSpan={10} className="px-4 py-4">
                           <ActivityTimeline
                             events={v.recentEvents}
                             emptyMessage="No events recorded for this visitor in the selected range."

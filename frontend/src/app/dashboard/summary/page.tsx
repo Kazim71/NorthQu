@@ -1,8 +1,14 @@
 import { requireOrgAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { getEventCountTrend, getEventsOverTime, getOrgSummary } from '@/lib/queries';
+import {
+  getEventCountTrend,
+  getEventsOverTime,
+  getOrgAnalytics,
+  getOrgSummary,
+} from '@/lib/queries';
 import { parseDateRangeFromSearchParams } from '@/lib/dateRange';
 import { SummaryPanel } from '@/components/SummaryPanel';
+import { AnalyticsPanel } from '@/components/analytics/AnalyticsPanel';
 import { DateRangePicker } from '@/components/DateRangePicker';
 
 export const dynamic = 'force-dynamic';
@@ -15,10 +21,11 @@ export default async function SummaryPage({
   const viewer = await requireOrgAdmin();
   const supabase = createClient();
   const range = parseDateRangeFromSearchParams(searchParams);
-  const [summary, eventsOverTime, eventTrend] = await Promise.all([
+  const [summary, eventsOverTime, eventTrend, analytics] = await Promise.all([
     getOrgSummary(supabase, viewer.organizationId, range),
     getEventsOverTime(supabase, viewer.organizationId, range),
     getEventCountTrend(supabase, viewer.organizationId, range),
+    getOrgAnalytics(supabase, viewer.organizationId, range),
   ]);
 
   return (
@@ -33,6 +40,7 @@ export default async function SummaryPage({
         <DateRangePicker />
       </div>
       <SummaryPanel summary={summary} eventsOverTime={eventsOverTime} eventTrend={eventTrend} />
+      <AnalyticsPanel analytics={analytics} />
     </div>
   );
 }

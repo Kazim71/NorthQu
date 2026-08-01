@@ -654,3 +654,270 @@ export async function getVisitors(
     recentEvents: (byVisitor.get(r.visitor_id) ?? []).slice(0, 25),
   }));
 }
+
+// =====================================================================
+// Analytics (migration 0009). Every function here is a thin wrapper over
+// one Postgres RPC: the aggregation must happen in the database because
+// each one filters by date range BEFORE grouping, and doing that in memory
+// would mean shipping every event row in the range to the browser just to
+// count them. The RPCs are SECURITY INVOKER, so the caller's own RLS still
+// applies — the explicit organizationId argument is what pins a platform
+// admin to one tenant (see the note above getOrganizations).
+// =====================================================================
+
+export interface FunnelStage {
+  stage: string;
+  stageOrder: number;
+  visitorCount: number;
+  /**
+   * Share of the FIRST stage, 0-100. Computed here rather than in SQL so the
+   * component never has to know which stage is the baseline.
+   */
+  pctOfTop: number;
+  /**
+   * Share of the PREVIOUS stage, 0-100, or null for the first stage where
+   * "drop-off from the step before" has no meaning. Null rather than 100 so
+   * the UI can omit it instead of rendering a misleading perfect score.
+   */
+  pctOfPrevious: number | null;
+}
+
+export interface TopProduct {
+  name: string;
+  productId: string | null;
+  viewCount: number;
+  cartCount: number;
+  purchaseCount: number;
+}
+
+export interface TopSearch {
+  term: string;
+  searchCount: number;
+  visitorCount: number;
+}
+
+export interface TopCategory {
+  category: string;
+  viewCount: number;
+  visitorCount: number;
+}
+
+export interface TrafficSource {
+  source: string;
+  medium: string;
+  visitorCount: number;
+  eventCount: number;
+}
+
+export interface VisitorTypeSplit {
+  newVisitors: number;
+  returningVisitors: number;
+}
+
+/** Shared RPC arg shape — every analytics function takes the same range. */
+function rangeArgs(organizationId: string, range: DateRange) {
+  return {
+    p_organization_id: organizationId,
+    p_from: range.from.toISOString(),
+    p_to: range.to.toISOString(),
+  };
+}
+
+export async function getConversionFunnel(
+  supabase: SupabaseClient,
+  organizationId: string,
+  range: DateRange,
+): Promise<FunnelStage[]> {
+  const { data, error } = await supabase.rpc('get_conversion_funnel', rangeArgs(organizationId, range));
+  if (error) throw new Error(`Failed to load conversion funnel: ${error.message}`);
+
+  const rows = ((data ?? []) as { stage: string; stage_order: number; visitor_count: number }[])
+    .slice()
+    .sort((a, b) => a.stage_order - b.stage_order);
+
+  const top = rows[0]?.visitor_count ?? 0;
+
+  return rows.map((r, i) => {
+    const previous = i === 0 ? null : rows[i - 1]?.visitor_count ?? 0;
+    return {
+      stage: r.stage,
+      stageOrder: r.stage_order,
+      visitorCount: Number(r.visitor_count),
+      pctOfTop: top === 0 ? 0 : Math.round((Number(r.visitor_count) / top) * 100),
+      // Guard the zero denominator explicitly: a stage nobody reached makes
+      // the next stage's conversion undefined, not 0% and certainly not ∞.
+      pctOfPrevious:
+        previous === null || previous === 0
+          ? null
+          : Math.round((Number(r.visitor_count) / Number(previous)) * 100),
+    };
+  });
+}
+
+export async function getTopProducts(
+  supabase: SupabaseClient,
+  organizationId: string,
+  range: DateRange,
+  limit = 8,
+): Promise<TopProduct[]> {
+  const { data, error } = await supabase.rpc('get_top_products', {
+    ...rangeArgs(organizationId, range),
+    p_limit: limit,
+  });
+  if (error) throw new Error(`Failed to load top products: ${error.message}`);
+
+  return ((data ?? []) as {
+    product_name: string;
+    product_id: string | null;
+    view_count: number;
+    cart_count: number;
+    purchase_count: number;
+  }[]).map((r) => ({
+    name: r.product_name,
+    productId: r.product_id,
+    viewCount: Number(r.view_count),
+    cartCount: Number(r.cart_count),
+    purchaseCount: Number(r.purchase_count),
+  }));
+}
+
+export async function getTopSearches(
+  supabase: SupabaseClient,
+  organizationId: string,
+  range: DateRange,
+  limit = 8,
+): Promise<TopSearch[]> {
+  const { data, error } = await supabase.rpc('get_top_searches', {
+    ...rangeArgs(organizationId, range),
+    p_limit: limit,
+  });
+  if (error) throw new Error(`Failed to load top searches: ${error.message}`);
+
+  return ((data ?? []) as { term: string; search_count: number; visitor_count: number }[]).map(
+    (r) => ({
+      term: r.term,
+      searchCount: Number(r.search_count),
+      visitorCount: Number(r.visitor_count),
+    }),
+  );
+}
+
+export async function getTopCategories(
+  supabase: SupabaseClient,
+  organizationId: string,
+  range: DateRange,
+  limit = 8,
+): Promise<TopCategory[]> {
+  const { data, error } = await supabase.rpc('get_top_categories', {
+    ...rangeArgs(organizationId, range),
+    p_limit: limit,
+  });
+  if (error) throw new Error(`Failed to load top categories: ${error.message}`);
+
+  return ((data ?? []) as { category: string; view_count: number; visitor_count: number }[]).map(
+    (r) => ({
+      category: r.category,
+      viewCount: Number(r.view_count),
+      visitorCount: Number(r.visitor_count),
+    }),
+  );
+}
+
+export async function getTrafficSources(
+  supabase: SupabaseClient,
+  organizationId: string,
+  range: DateRange,
+  limit = 8,
+): Promise<TrafficSource[]> {
+  const { data, error } = await supabase.rpc('get_traffic_sources', {
+    ...rangeArgs(organizationId, range),
+    p_limit: limit,
+  });
+  if (error) throw new Error(`Failed to load traffic sources: ${error.message}`);
+
+  return ((data ?? []) as {
+    source: string;
+    medium: string;
+    visitor_count: number;
+    event_count: number;
+  }[]).map((r) => ({
+    source: r.source,
+    medium: r.medium,
+    visitorCount: Number(r.visitor_count),
+    eventCount: Number(r.event_count),
+  }));
+}
+
+export async function getVisitorTypes(
+  supabase: SupabaseClient,
+  organizationId: string,
+  range: DateRange,
+): Promise<VisitorTypeSplit> {
+  const { data, error } = await supabase.rpc('get_visitor_types', rangeArgs(organizationId, range));
+  if (error) throw new Error(`Failed to load visitor types: ${error.message}`);
+
+  const rows = (data ?? []) as { visitor_type: string; visitor_count: number }[];
+  const find = (t: string) => Number(rows.find((r) => r.visitor_type === t)?.visitor_count ?? 0);
+
+  return { newVisitors: find('new'), returningVisitors: find('returning') };
+}
+
+export interface OrgAnalytics {
+  funnel: FunnelStage[];
+  topProducts: TopProduct[];
+  topSearches: TopSearch[];
+  topCategories: TopCategory[];
+  trafficSources: TrafficSource[];
+  visitorTypes: VisitorTypeSplit;
+}
+
+/**
+ * PostgREST's error when an RPC doesn't exist in its schema cache.
+ *
+ * Matched so the ONE recoverable cause — migration 0009 not applied yet —
+ * can be told apart from every other failure. Frontend deploys and SQL
+ * migrations are independent steps in this project (migrations are applied
+ * by hand in the Supabase editor), so there is a real window where the code
+ * is live and the functions are not.
+ */
+function isMissingFunctionError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return /Could not find the function|schema cache/i.test(message);
+}
+
+/**
+ * Every analytics RPC for one org, in parallel.
+ *
+ * Bundled so the two pages that render this panel (org Summary and the
+ * super-admin org detail) can't drift into fetching different subsets, and
+ * so the six round-trips overlap instead of serializing — the page is
+ * blocked on the slowest one, not their sum.
+ *
+ * Returns null when migration 0009 hasn't been applied, so the rest of the
+ * Summary page still renders. This is NOT a blanket try/catch: any other
+ * error still throws. Swallowing everything here would turn a broken query
+ * into a permanently empty panel that looks like "no data yet" — the single
+ * most misleading failure mode a dashboard can have.
+ */
+export async function getOrgAnalytics(
+  supabase: SupabaseClient,
+  organizationId: string,
+  range: DateRange,
+): Promise<OrgAnalytics | null> {
+  try {
+    const [funnel, topProducts, topSearches, topCategories, trafficSources, visitorTypes] =
+      await Promise.all([
+        getConversionFunnel(supabase, organizationId, range),
+        getTopProducts(supabase, organizationId, range),
+        getTopSearches(supabase, organizationId, range),
+        getTopCategories(supabase, organizationId, range),
+        getTrafficSources(supabase, organizationId, range),
+        getVisitorTypes(supabase, organizationId, range),
+      ]);
+
+    return { funnel, topProducts, topSearches, topCategories, trafficSources, visitorTypes };
+  } catch (err) {
+    if (isMissingFunctionError(err)) return null;
+    throw err;
+  }
+}

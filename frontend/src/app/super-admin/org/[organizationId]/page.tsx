@@ -6,12 +6,14 @@ import {
   getEventCountTrend,
   getEventsOverTime,
   getOrganization,
+  getOrgAnalytics,
   getOrgSummary,
   getVisitors,
 } from '@/lib/queries';
 import { parseDateRangeFromSearchParams } from '@/lib/dateRange';
 import { VisitorsTable } from '@/components/VisitorsTable';
 import { SummaryPanel } from '@/components/SummaryPanel';
+import { AnalyticsPanel } from '@/components/analytics/AnalyticsPanel';
 import { DateRangePicker } from '@/components/DateRangePicker';
 
 export const dynamic = 'force-dynamic';
@@ -43,11 +45,12 @@ export default async function SuperAdminOrgPage({
 
   const range = parseDateRangeFromSearchParams(searchParams);
 
-  const [visitors, summary, eventsOverTime, eventTrend] = await Promise.all([
+  const [visitors, summary, eventsOverTime, eventTrend, analytics] = await Promise.all([
     getVisitors(supabase, params.organizationId, range),
     getOrgSummary(supabase, params.organizationId, range),
     getEventsOverTime(supabase, params.organizationId, range),
     getEventCountTrend(supabase, params.organizationId, range),
+    getOrgAnalytics(supabase, params.organizationId, range),
   ]);
 
   return (
@@ -69,6 +72,8 @@ export default async function SuperAdminOrgPage({
       </div>
 
       <SummaryPanel summary={summary} eventsOverTime={eventsOverTime} eventTrend={eventTrend} />
+
+      <AnalyticsPanel analytics={analytics} />
 
       <div>
         <h2 className="mb-4 font-display text-2xl text-black dark:text-white">

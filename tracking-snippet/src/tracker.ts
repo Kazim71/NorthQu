@@ -1,5 +1,6 @@
 import { getVisitorId } from './visitorId.js';
 import { shouldDropAsDuplicate } from './debounce.js';
+import { getAttribution } from './attribution.js';
 import { postEvent, postIdentify, type LeadpulseConfig } from './api.js';
 
 /**
@@ -146,7 +147,15 @@ function doTrack(eventName: string, data?: TrackData): void {
 
   // Shape matches the backend's events.schema.ts: typed fields at the top
   // level, everything else passed through into the metadata jsonb.
+  //
+  // Attribution is spread FIRST so an explicit caller-supplied value of the
+  // same key wins — a theme that knows better about its own campaign
+  // tagging should not be overridden by the stored first-touch record.
+  // It rides on every event, not just page_view, because
+  // get_traffic_sources() resolves a visitor's source from their first
+  // event WITHIN THE SELECTED RANGE, which is frequently not a page_view.
   postEvent(config, {
+    ...getAttribution(),
     event_type: eventName as EventType,
     visitor_id: getVisitorId(),
     view_data: { ...(view_data ?? {}), url },
