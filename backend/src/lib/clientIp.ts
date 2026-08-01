@@ -26,6 +26,23 @@ import type { Request } from 'express';
  * address, which is what makes an "Unknown" location honest downstream.
  */
 export function getClientIp(req: Request): string | null {
+  // Cloudflare sits in front of at least one live tenant (confirmed via the
+  // diagnostic log in events.controller.ts: X-Forwarded-For showed a
+  // Cloudflare edge IP followed by a private Render-internal address that
+  // `trust proxy: 1` was picking instead of the real client). Cloudflare
+  // sets this header to the true visitor IP at ITS edge, before anything
+  // else touches the request — trusting it sidesteps needing to know the
+  // exact hop count through Render's internal proxying, which is not
+  // guaranteed stable. Only trustworthy because Cloudflare strips/overwrites
+  // any client-supplied copy of this header at their edge; it would be
+  // spoofable if Cloudflare were ever removed from a site's path without
+  // removing this check too.
+  const cfConnectingIp = req.header('cf-connecting-ip');
+  if (cfConnectingIp) {
+    const normalized = normalizeIp(cfConnectingIp);
+    if (normalized && !isPrivateOrReserved(normalized)) return normalized;
+  }
+
   // req.ip already accounts for `trust proxy`. Fall back to the raw socket
   // for completeness (e.g. a direct request with no proxy in front).
   const candidate = req.ip ?? req.socket.remoteAddress ?? null;
