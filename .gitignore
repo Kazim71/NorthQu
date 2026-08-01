@@ -37,3 +37,29 @@ tracking-snippet/TESTING.md
 # reason to be in a public repo.
 tracking-snippet/shopify-integration.md
 tracking-snippet/shopify-webhook-integration.md
+
+# =====================================================================
+# Proprietary source — this repo is public, and none of the following
+# should be reconstructable from it: the database schema/RLS design, the
+# backend's actual business logic, or any client integration code/config.
+# NOTE: this only stops NEW files under these paths from being tracked —
+# anything already committed stays in git history until it is separately
+# untracked (git rm --cached) or history is rewritten. Reviewed 2026-07-30.
+# =====================================================================
+
+# Schema, RLS policies, Postgres functions, seed/verification data — this
+# is the architectural blueprint of the whole system.
+supabase/
+
+# Backend business logic: ingestion, identity-resolution, and every
+# per-platform integration (Shopify, and any future WooCommerce/other).
+backend/src/modules/
+
+# Any future integration-specific code or config, at any depth (e.g. a
+# woocommerce/, integrations/, or platform-specific connector folder).
+**/integrations/
+**/integration/
+
+# One-off or maintenance scripts, at any depth — operational detail with
+# no reason to be publicly readable.
+**/scripts/
