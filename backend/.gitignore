@@ -1,5 +1,8 @@
 node_modules/
 dist/
-.env
-.env.local
+# Deny-all-except-example: covers .env, .env.local, .env.staging, and any
+# future env file by default, rather than needing each new one added here
+# by hand (the exact gap that let .env.staging not be covered until now).
+.env*
+!.env.example
 *.log

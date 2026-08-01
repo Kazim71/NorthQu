@@ -1,6 +1,10 @@
 node_modules/
 .next/
-.env.local
+# Deny-all-except-example: covers .env.local, .env.staging.local, and any
+# future env file by default, rather than needing each new one added here
+# by hand.
+.env*
+!.env.local.example
 next-env.d.ts
 *.tsbuildinfo
 

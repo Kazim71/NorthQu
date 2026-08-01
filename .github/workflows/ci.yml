@@ -61,6 +61,16 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
 
+  event-types-sync:
+    name: EVENT_TYPES sync (backend <-> tracking-snippet)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Plain Node, no deps, no install — see the script's own header for
+      # what it checks and why it lives in .github/ rather than scripts/
+      # (the latter is gitignored repo-wide as internal-only tooling).
+      - run: node .github/ci-checks/verify-event-types-sync.mjs
+
   tracking-snippet:
     name: Tracking snippet (typecheck + build)
     runs-on: ubuntu-latest
