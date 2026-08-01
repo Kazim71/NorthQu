@@ -8,6 +8,11 @@ import { EMPTY_DEVICE, type DeviceInfo } from '../../lib/userAgent.js';
  * views, camelCase for interaction events) — normalizing here would break
  * the correspondence with the snippet and with existing seed data.
  *
+ * Must stay identical to EVENT_TYPES in tracking-snippet/src/tracker.ts.
+ * This is CI-enforced, not just commented: .github/ci-checks/
+ * verify-event-types-sync.mjs fails the build if the two drift, so this is
+ * a note for humans editing the list, not the only thing keeping it in sync.
+ *
  * Note the events table has no CHECK constraint on event_type by design
  * (see 0001_init_schema.sql): this enum is the validation boundary, so a
  * new event type ships as a code change and returns a useful 400 instead of

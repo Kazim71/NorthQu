@@ -9,6 +9,9 @@ import { postEvent, postIdentify, type LeadpulseConfig } from './api.js';
  * else with a 400, so validating here turns a wasted round-trip into an
  * immediate console error naming the offending event.
  *
+ * CI-enforced, not just commented: .github/ci-checks/
+ * verify-event-types-sync.mjs fails the build if the two lists drift.
+ *
  * Casing is inconsistent (snake_case for page-level views, camelCase for
  * interactions) because it mirrors the SaleAssist convention exactly.
  * Normalizing it would break correspondence with the backend enum.
