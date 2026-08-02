@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { BellIcon } from './icons';
+import { formatDateTime } from '@/lib/formatDate';
 import type { ReadySignalLead } from '@/lib/queries';
 
 /**
@@ -69,7 +70,7 @@ export function NotificationBell({ leads }: { leads: ReadySignalLead[] }) {
                   </p>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400">
                     {lead.city ?? 'Unknown location'}
-                    {lead.last_seen ? ` · seen ${new Date(lead.last_seen).toLocaleString()}` : ''}
+                    {lead.last_seen ? ` · seen ${formatDateTime(lead.last_seen)}` : ''}
                   </p>
                 </li>
               ))}

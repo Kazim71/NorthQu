@@ -11,7 +11,11 @@ import { createClient } from '@/lib/supabase/server';
 export type Viewer =
   | { kind: 'platform_admin'; userId: string; email: string }
   | { kind: 'org_admin'; userId: string; email: string; organizationId: string; role: string }
-  | { kind: 'unassigned'; userId: string; email: string }
+  // accessRevoked distinguishes "a platform admin turned this account off"
+  // (has_active on admin_users, migration 0010) from the ordinary
+  // just-signed-up case, purely for the message shown on /pending —
+  // both are the same "no usable role right now" state otherwise.
+  | { kind: 'unassigned'; userId: string; email: string; accessRevoked?: boolean }
   | { kind: 'anonymous' };
 
 export async function getViewer(): Promise<Viewer> {
@@ -42,11 +46,20 @@ export async function getViewer(): Promise<Viewer> {
   // whole reason an org admin cannot look at another tenant.
   const { data: adminUser } = await supabase
     .from('admin_users')
-    .select('organization_id, role')
+    .select('organization_id, role, is_active')
     .eq('id', user.id)
     .maybeSingle();
 
   if (adminUser) {
+    // A platform admin (super-admin) can revoke an org admin's access
+    // without deleting the account — migration 0010's is_active flag.
+    // Treated as 'unassigned' rather than a distinct kind: the redirect
+    // target (/pending, see below) is the same "you have no usable role
+    // right now" state, just with a different message so it isn't
+    // confused with a brand-new signup waiting to be provisioned.
+    if (adminUser.is_active === false) {
+      return { kind: 'unassigned', userId: user.id, email, accessRevoked: true };
+    }
     return {
       kind: 'org_admin',
       userId: user.id,
@@ -106,4 +119,15 @@ export async function getPlatformAdminOrNull(): Promise<
 > {
   const viewer = await getViewer();
   return viewer.kind === 'platform_admin' ? viewer : null;
+}
+
+/** Route Handler variant of requireOrgAdmin() — see getPlatformAdminOrNull()
+ * for why this returns null instead of redirecting. Used by the /api/org/*
+ * self-service routes (team management, settings), which always scope to
+ * THIS viewer's own organizationId — never a client-supplied one. */
+export async function getOrgAdminOrNull(): Promise<
+  Extract<Viewer, { kind: 'org_admin' }> | null
+> {
+  const viewer = await getViewer();
+  return viewer.kind === 'org_admin' ? viewer : null;
 }

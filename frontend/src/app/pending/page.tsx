@@ -17,8 +17,12 @@ export default async function PendingPage() {
   return (
     <div className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center px-6">
       <EmptyState
-        title="Waiting for organization assignment"
-        description={`You're signed in as ${viewer.email}, but your account hasn't been linked to an organization yet. An administrator needs to add you before any lead data becomes visible.`}
+        title={viewer.accessRevoked ? 'Access revoked' : 'Waiting for organization assignment'}
+        description={
+          viewer.accessRevoked
+            ? `Your access has been turned off by an administrator. If you believe this is a mistake, contact whoever manages your NorthQu account.`
+            : `You're signed in as ${viewer.email}, but your account hasn't been linked to an organization yet. An administrator needs to add you before any lead data becomes visible.`
+        }
         action={<SignOutButton />}
       />
     </div>

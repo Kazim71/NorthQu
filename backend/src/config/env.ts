@@ -55,6 +55,12 @@ const envSchema = z.object({
   // missing secret can never be mistaken for a valid signature. Make it
   // required here once a store is actually connected.
   SHOPIFY_WEBHOOK_SECRET: z.string().min(1).optional(),
+
+  // Automation service (n8n), see lib/automation.ts. Both optional — the
+  // forwarder is a no-op with either unset, so an existing deploy that
+  // doesn't use Automation needs zero changes.
+  N8N_WEBHOOK_URL: z.string().url().optional(),
+  N8N_TRIGGER_EVENT_TYPES: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -88,6 +88,13 @@ export default function LeadPulsePage() {
         </Link>
       </div>
 
+      <Link
+        href="/how-it-works"
+        className="mt-4 inline-block text-sm font-medium text-cinnamon-600 hover:text-cinnamon-700 dark:text-cinnamon-400 dark:hover:text-cinnamon-300"
+      >
+        See how it works, screen by screen →
+      </Link>
+
       {/* ---- How it works --------------------------------------------- */}
       <div className="mt-20">
         <h2 className="font-marketingDisplay text-2xl text-black dark:text-white">How it works</h2>

@@ -9,6 +9,36 @@ export interface Organization {
   created_at: string;
 }
 
+/** Platform-admin-only fields — see migration 0010. Kept off the base
+ * Organization type since ordinary dashboard queries never need them. */
+export interface OrganizationAdminFields {
+  ingestion_paused: boolean;
+  has_leadpulse: boolean;
+  has_automation: boolean;
+  has_web_services: boolean;
+  has_crm: boolean;
+}
+
+export interface BlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  status: 'draft' | 'published';
+  generated_by_ai: boolean;
+  created_at: string;
+  published_at: string | null;
+}
+
+export interface AdminUserRow {
+  id: string;
+  name: string | null;
+  email: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface LeadEvent {
   id: string;
   event_type: string;
@@ -148,6 +178,111 @@ export async function getOrganization(
 
   if (error) throw new Error(`Failed to load organization: ${error.message}`);
   return (data as Organization) ?? null;
+}
+
+/** Migration-0010 columns' defaults — matches the migration's own SQL
+ * defaults exactly (has_leadpulse true, everything else false/unpaused),
+ * so a pre-migration read and a post-migration read of a fresh row agree. */
+const ORG_ADMIN_FIELDS_DEFAULT: OrganizationAdminFields = {
+  ingestion_paused: false,
+  has_leadpulse: true,
+  has_automation: false,
+  has_web_services: false,
+  has_crm: false,
+};
+
+/**
+ * Platform-admin-only fields (ingestion_paused, has_*). A SEPARATE query
+ * from getOrganization() rather than adding these columns there: they're
+ * only ever read on the super-admin org page, and keeping them off the
+ * shared Organization type stops them silently leaking into an org-admin's
+ * own dashboard queries later just because the type made them available.
+ *
+ * Falls back to ORG_ADMIN_FIELDS_DEFAULT (not null, not a throw) if
+ * migration 0010 hasn't been applied yet — same isMissingFunctionError()
+ * pattern getOrgAnalytics() uses for migration 0009. This one matters more
+ * than most: /app (the service hub) calls this on EVERY org-admin login,
+ * so a missing migration must never break signing in.
+ */
+export async function getOrganizationAdminFields(
+  supabase: SupabaseClient,
+  organizationId: string,
+): Promise<OrganizationAdminFields> {
+  const { data, error } = await supabase
+    .from('organizations')
+    .select('ingestion_paused, has_leadpulse, has_automation, has_web_services, has_crm')
+    .eq('id', organizationId)
+    .maybeSingle();
+
+  if (error) {
+    if (isMissingFunctionError(error)) return ORG_ADMIN_FIELDS_DEFAULT;
+    throw new Error(`Failed to load organization admin fields: ${error.message}`);
+  }
+  return (data as OrganizationAdminFields) ?? ORG_ADMIN_FIELDS_DEFAULT;
+}
+
+/**
+ * The org's own api_key — a self-read, not platform-admin-only (RLS's
+ * organizations_select_own already permits an org's own admin to read
+ * their own row, api_key included; this is a separate function from
+ * getOrganization() purely so the base Organization type doesn't carry a
+ * secret-shaped field by default).
+ */
+export async function getOrganizationApiKey(
+  supabase: SupabaseClient,
+  organizationId: string,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('organizations')
+    .select('api_key')
+    .eq('id', organizationId)
+    .maybeSingle();
+
+  if (error) throw new Error(`Failed to load API key: ${error.message}`);
+  return (data?.api_key as string) ?? null;
+}
+
+/**
+ * Admins/agents for one org. Read via the anon client — the platform
+ * admin's cross-org SELECT policy (migration 0003) already covers this;
+ * only writes need the service-role escape hatch (see /api/admin/users).
+ *
+ * Falls back to a query without `name`/`is_active` (migration 0010) if
+ * that migration hasn't been applied yet, defaulting name to null and
+ * is_active to true (matching the migration's own column default) —
+ * same reasoning as getOrganizationAdminFields(): the Team/Admins
+ * management UI should degrade to "no names set yet, everyone active"
+ * rather than break entirely.
+ */
+export async function getAdminUsers(
+  supabase: SupabaseClient,
+  organizationId: string,
+): Promise<AdminUserRow[]> {
+  const { data, error } = await supabase
+    .from('admin_users')
+    .select('id, name, email, role, is_active, created_at')
+    .eq('organization_id', organizationId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    if (!isMissingFunctionError(error)) {
+      throw new Error(`Failed to load admin users: ${error.message}`);
+    }
+    const fallback = await supabase
+      .from('admin_users')
+      .select('id, email, role, created_at')
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: true });
+    if (fallback.error) {
+      throw new Error(`Failed to load admin users: ${fallback.error.message}`);
+    }
+    return ((fallback.data ?? []) as Omit<AdminUserRow, 'name' | 'is_active'>[]).map((row) => ({
+      ...row,
+      name: null,
+      is_active: true,
+    }));
+  }
+  return (data ?? []) as AdminUserRow[];
 }
 
 /** Contact counts per org, for the super-admin company grid. */
@@ -920,4 +1055,48 @@ export async function getOrgAnalytics(
     if (isMissingFunctionError(err)) return null;
     throw err;
   }
+}
+
+/**
+ * All blog posts (draft + published), for the platform-admin content
+ * review page. Read via the anon client — blog_posts_select_all_platform_admin
+ * (migration 0011) already grants a platform admin full read; only writes
+ * need the service-role route (/api/admin/content/*).
+ */
+export async function getBlogPosts(supabase: SupabaseClient): Promise<BlogPost[]> {
+  const { data, error } = await supabase
+    .from('blog_posts')
+    .select('id, title, slug, content, status, generated_by_ai, created_at, published_at')
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(`Failed to load blog posts: ${error.message}`);
+  return (data ?? []) as BlogPost[];
+}
+
+/** Published posts only, newest first — powers the public /insights page.
+ * blog_posts_select_published (migration 0011) grants this to `anon`. */
+export async function getPublishedBlogPosts(supabase: SupabaseClient): Promise<BlogPost[]> {
+  const { data, error } = await supabase
+    .from('blog_posts')
+    .select('id, title, slug, content, status, generated_by_ai, created_at, published_at')
+    .eq('status', 'published')
+    .order('published_at', { ascending: false });
+
+  if (error) throw new Error(`Failed to load blog posts: ${error.message}`);
+  return (data ?? []) as BlogPost[];
+}
+
+export async function getBlogPostBySlug(
+  supabase: SupabaseClient,
+  slug: string,
+): Promise<BlogPost | null> {
+  const { data, error } = await supabase
+    .from('blog_posts')
+    .select('id, title, slug, content, status, generated_by_ai, created_at, published_at')
+    .eq('slug', slug)
+    .eq('status', 'published')
+    .maybeSingle();
+
+  if (error) throw new Error(`Failed to load blog post: ${error.message}`);
+  return (data as BlogPost) ?? null;
 }
