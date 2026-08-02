@@ -105,7 +105,13 @@ export default async function LandingPage({
 
   if (!bypassRedirect) {
     if (viewer.kind === 'platform_admin') redirect('/super-admin');
-    if (viewer.kind === 'org_admin') redirect('/dashboard');
+    // Was a direct redirect('/dashboard') — that hardcoded LeadPulse as
+    // THE product, with no way for a client who only wants Automation or
+    // Web Services to land anywhere else. /app is the service hub: it
+    // shows a card per service the org actually has enabled (migration
+    // 0010's has_* flags) and only THEN sends them into a specific
+    // product's dashboard.
+    if (viewer.kind === 'org_admin') redirect('/app');
     if (viewer.kind === 'unassigned') redirect('/pending');
   }
   // viewer.kind === 'anonymous', or the redirect was bypassed, falls

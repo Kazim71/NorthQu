@@ -7,6 +7,7 @@ import { EmptyState } from './ui/EmptyState';
 import { ActivityTimeline } from './ActivityTimeline';
 import { markLeadMessaged, resetLeadMessaged } from '@/app/dashboard/actions';
 import { toCsv, downloadTextFile } from '@/lib/csv';
+import { formatDateTime } from '@/lib/formatDate';
 import type { Lead } from '@/lib/queries';
 
 /**
@@ -166,7 +167,7 @@ export function LeadsTable({ leads, enableActions = false }: { leads: Lead[]; en
                         {lead.eventCount}
                       </td>
                       <td className="px-5 py-3.5 text-neutral-600 dark:text-neutral-400">
-                        {lead.last_seen ? new Date(lead.last_seen).toLocaleString() : '—'}
+                        {lead.last_seen ? formatDateTime(lead.last_seen) : '—'}
                       </td>
                       {enableActions ? (
                         <td className="px-5 py-3.5 text-right">

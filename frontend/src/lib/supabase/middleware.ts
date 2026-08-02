@@ -108,7 +108,7 @@ export async function updateSession(request: NextRequest) {
   // /api/** is intentionally NOT gated here: those route handlers do their
   // own auth (getPlatformAdminOrNull) and must answer with a 403 JSON
   // body, not an HTML redirect to /login.
-  const AUTHENTICATED_PREFIXES = ['/dashboard', '/super-admin', '/pending'];
+  const AUTHENTICATED_PREFIXES = ['/app', '/dashboard', '/super-admin', '/pending'];
   const requiresAuth = AUTHENTICATED_PREFIXES.some(
     (prefix) => path === prefix || path.startsWith(`${prefix}/`),
   );

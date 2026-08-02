@@ -2,7 +2,7 @@ import { requirePlatformAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { getPlatformReadySignal } from '@/lib/queries';
 import { AppShell } from '@/components/AppShell';
-import { CompaniesIcon, ProvisionIcon } from '@/components/icons';
+import { CompaniesIcon, ProvisionIcon, ContentIcon } from '@/components/icons';
 
 /**
  * Gates the ENTIRE /super-admin subtree, including
@@ -19,6 +19,7 @@ export default async function SuperAdminLayout({ children }: { children: React.R
       navItems={[
         { href: '/super-admin', label: 'Companies', icon: <CompaniesIcon /> },
         { href: '/super-admin/new-org', label: 'Provision', icon: <ProvisionIcon /> },
+        { href: '/super-admin/content', label: 'Content', icon: <ContentIcon /> },
       ]}
       contextLabel="All organizations"
       contextSublabel="Platform"

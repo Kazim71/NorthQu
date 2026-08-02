@@ -2,7 +2,14 @@ import { requireOrgAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { getOrganization, getReadySignal } from '@/lib/queries';
 import { AppShell } from '@/components/AppShell';
-import { LeadsIcon, SummaryIcon } from '@/components/icons';
+import {
+  LeadsIcon,
+  SummaryIcon,
+  ChevronLeftIcon,
+  AnalyticsIcon,
+  SettingsIcon,
+  TeamIcon,
+} from '@/components/icons';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Gate runs before any child renders. organizationId comes from the
@@ -17,10 +24,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <AppShell
       navItems={[
+        // Not a real dashboard section — a way back to the /app service
+        // hub, now that login lands there instead of straight into
+        // LeadPulse. Sits above the real nav items so it reads as "leave
+        // this product," not as a fourth peer section.
+        { href: '/app', label: 'All services', icon: <ChevronLeftIcon /> },
         // One unified "Visitors" entry — the separate Leads / Anonymous
         // Visitors split was merged into a single table (VisitorsTable).
         { href: '/dashboard', label: 'Visitors', icon: <LeadsIcon /> },
         { href: '/dashboard/summary', label: 'Summary', icon: <SummaryIcon /> },
+        { href: '/dashboard/analytics', label: 'Analytics', icon: <AnalyticsIcon /> },
+        { href: '/dashboard/team', label: 'Team', icon: <TeamIcon /> },
+        { href: '/dashboard/settings', label: 'Settings', icon: <SettingsIcon /> },
       ]}
       contextLabel={org?.name ?? 'Your organization'}
       contextSublabel="Organization"

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ActivityTimeline } from './ActivityTimeline';
 import { EmptyState } from './ui/EmptyState';
+import { formatDateTime } from '@/lib/formatDate';
 import type { AnonymousVisitor } from '@/lib/queries';
 
 /**
@@ -63,10 +64,10 @@ export function AnonymousVisitorsTable({ visitors }: { visitors: AnonymousVisito
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-neutral-600 dark:text-neutral-400">
-                    {new Date(v.firstSeen).toLocaleString()}
+                    {formatDateTime(v.firstSeen)}
                   </td>
                   <td className="px-5 py-3.5 text-neutral-600 dark:text-neutral-400">
-                    {new Date(v.lastSeen).toLocaleString()}
+                    {formatDateTime(v.lastSeen)}
                   </td>
                   <td className="px-5 py-3.5 text-right tabular-nums text-neutral-700 dark:text-neutral-300">
                     {v.eventCount}

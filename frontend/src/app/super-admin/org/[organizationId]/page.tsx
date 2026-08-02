@@ -3,9 +3,11 @@ import { notFound } from 'next/navigation';
 import { requirePlatformAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import {
+  getAdminUsers,
   getEventCountTrend,
   getEventsOverTime,
   getOrganization,
+  getOrganizationAdminFields,
   getOrgAnalytics,
   getOrgSummary,
   getVisitors,
@@ -15,6 +17,9 @@ import { VisitorsTable } from '@/components/VisitorsTable';
 import { SummaryPanel } from '@/components/SummaryPanel';
 import { AnalyticsPanel } from '@/components/analytics/AnalyticsPanel';
 import { DateRangePicker } from '@/components/DateRangePicker';
+import { AdminUsersManager } from '@/components/AdminUsersManager';
+import { IngestionPauseToggle } from '@/components/IngestionPauseToggle';
+import { ServiceFlagsToggle } from '@/components/ServiceFlagsToggle';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,13 +50,16 @@ export default async function SuperAdminOrgPage({
 
   const range = parseDateRangeFromSearchParams(searchParams);
 
-  const [visitors, summary, eventsOverTime, eventTrend, analytics] = await Promise.all([
-    getVisitors(supabase, params.organizationId, range),
-    getOrgSummary(supabase, params.organizationId, range),
-    getEventsOverTime(supabase, params.organizationId, range),
-    getEventCountTrend(supabase, params.organizationId, range),
-    getOrgAnalytics(supabase, params.organizationId, range),
-  ]);
+  const [visitors, summary, eventsOverTime, eventTrend, analytics, adminFields, adminUsers] =
+    await Promise.all([
+      getVisitors(supabase, params.organizationId, range),
+      getOrgSummary(supabase, params.organizationId, range),
+      getEventsOverTime(supabase, params.organizationId, range),
+      getEventCountTrend(supabase, params.organizationId, range),
+      getOrgAnalytics(supabase, params.organizationId, range),
+      getOrganizationAdminFields(supabase, params.organizationId),
+      getAdminUsers(supabase, params.organizationId),
+    ]);
 
   return (
     <div className="space-y-8">
@@ -70,6 +78,30 @@ export default async function SuperAdminOrgPage({
         </div>
         <DateRangePicker />
       </div>
+
+      {adminFields ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <IngestionPauseToggle
+            organizationId={params.organizationId}
+            initialPaused={adminFields.ingestion_paused}
+          />
+          <ServiceFlagsToggle
+            organizationId={params.organizationId}
+            initial={{
+              has_leadpulse: adminFields.has_leadpulse,
+              has_automation: adminFields.has_automation,
+              has_web_services: adminFields.has_web_services,
+              has_crm: adminFields.has_crm,
+            }}
+          />
+        </div>
+      ) : null}
+
+      <AdminUsersManager
+        organizationId={params.organizationId}
+        organizationName={org.name}
+        initialUsers={adminUsers}
+      />
 
       <SummaryPanel summary={summary} eventsOverTime={eventsOverTime} eventTrend={eventTrend} />
 

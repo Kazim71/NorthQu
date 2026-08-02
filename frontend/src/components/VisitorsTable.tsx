@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { ActivityTimeline } from './ActivityTimeline';
 import { EmptyState } from './ui/EmptyState';
 import { toCsv, downloadTextFile } from '@/lib/csv';
 import { scoreVisitor, toDialable, type LeadScore } from '@/lib/leadScore';
+import { formatDateTime } from '@/lib/formatDate';
 import type { Visitor } from '@/lib/queries';
 
 /**
@@ -202,9 +203,16 @@ export function VisitorsTable({ visitors }: { visitors: Visitor[] }) {
                 const lead = scores.get(v.visitorId);
                 const dialable = toDialable(v.phone);
                 return (
-                  <>
+                  // The Fragment (not the shorthand <>, which cannot take a
+                  // key) is the actual direct child of .map() — it wraps
+                  // TWO sibling <tr>s (the row + its expandable detail
+                  // row), so the key belongs here, not on the inner <tr>.
+                  // Was previously misplaced on the <tr>, which is a no-op
+                  // for React's reconciliation and printed a real "missing
+                  // key" console warning on every render — found via a
+                  // headless-browser mobile audit, not cosmetic.
+                  <Fragment key={v.visitorId}>
                     <tr
-                      key={v.visitorId}
                       onClick={() => setExpanded(isOpen ? null : v.visitorId)}
                       className="cursor-pointer transition-colors hover:bg-cinnamon-50/60 dark:hover:bg-neutral-800/50"
                     >
@@ -306,10 +314,10 @@ export function VisitorsTable({ visitors }: { visitors: Visitor[] }) {
                         {v.pageCount}
                       </td>
                       <td className="px-4 py-3.5 text-xs text-neutral-600 dark:text-neutral-400">
-                        {new Date(v.firstSeen).toLocaleString()}
+                        {formatDateTime(v.firstSeen)}
                       </td>
                       <td className="px-4 py-3.5 text-xs text-neutral-600 dark:text-neutral-400">
-                        {new Date(v.lastSeen).toLocaleString()}
+                        {formatDateTime(v.lastSeen)}
                       </td>
                     </tr>
 
@@ -323,7 +331,7 @@ export function VisitorsTable({ visitors }: { visitors: Visitor[] }) {
                         </td>
                       </tr>
                     ) : null}
-                  </>
+                  </Fragment>
                 );
               })
             )}

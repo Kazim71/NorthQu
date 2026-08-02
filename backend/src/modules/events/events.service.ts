@@ -2,6 +2,7 @@ import { badRequest } from '../../lib/errors.js';
 import { logger } from '../../lib/logger.js';
 import { lookupIp } from '../../lib/geoip.js';
 import { parseUserAgent } from '../../lib/userAgent.js';
+import { forwardToAutomation } from '../../lib/automation.js';
 import { eventsRepository } from './events.repository.js';
 import { eventPayloadSchema, toEventRow } from './events.schema.js';
 
@@ -59,6 +60,10 @@ export const eventsService = {
 
     const row = toEventRow(organizationId, parsed.data, { geo, device, ip: context.ip });
     const eventId = await eventsRepository.insert(row);
+
+    // Fire-and-forget, after the row is safely written — see automation.ts
+    // for why this can never slow down or fail an ingest request.
+    forwardToAutomation(row);
 
     logger.info('event ingested', {
       org_id: organizationId,

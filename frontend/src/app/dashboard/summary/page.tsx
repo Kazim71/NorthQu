@@ -1,14 +1,9 @@
+import Link from 'next/link';
 import { requireOrgAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import {
-  getEventCountTrend,
-  getEventsOverTime,
-  getOrgAnalytics,
-  getOrgSummary,
-} from '@/lib/queries';
+import { getEventCountTrend, getEventsOverTime, getOrgSummary } from '@/lib/queries';
 import { parseDateRangeFromSearchParams } from '@/lib/dateRange';
 import { SummaryPanel } from '@/components/SummaryPanel';
-import { AnalyticsPanel } from '@/components/analytics/AnalyticsPanel';
 import { DateRangePicker } from '@/components/DateRangePicker';
 
 export const dynamic = 'force-dynamic';
@@ -21,11 +16,10 @@ export default async function SummaryPage({
   const viewer = await requireOrgAdmin();
   const supabase = createClient();
   const range = parseDateRangeFromSearchParams(searchParams);
-  const [summary, eventsOverTime, eventTrend, analytics] = await Promise.all([
+  const [summary, eventsOverTime, eventTrend] = await Promise.all([
     getOrgSummary(supabase, viewer.organizationId, range),
     getEventsOverTime(supabase, viewer.organizationId, range),
     getEventCountTrend(supabase, viewer.organizationId, range),
-    getOrgAnalytics(supabase, viewer.organizationId, range),
   ]);
 
   return (
@@ -34,13 +28,15 @@ export default async function SummaryPage({
         <div>
           <h1 className="font-display text-3xl text-black dark:text-white">Summary</h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            Aggregate activity across your storefront.
+            Aggregate activity across your storefront.{' '}
+            <Link href="/dashboard/analytics" className="text-cinnamon-600 hover:underline dark:text-cinnamon-400">
+              See the full funnel and product intelligence →
+            </Link>
           </p>
         </div>
         <DateRangePicker />
       </div>
       <SummaryPanel summary={summary} eventsOverTime={eventsOverTime} eventTrend={eventTrend} />
-      <AnalyticsPanel analytics={analytics} />
     </div>
   );
 }

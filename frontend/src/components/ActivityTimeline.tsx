@@ -1,3 +1,5 @@
+import { formatDateTime } from '@/lib/formatDate';
+
 export interface TimelineEvent {
   id: string;
   event_type: string;
@@ -74,7 +76,7 @@ export function ActivityTimeline({
                 <span className="truncate text-xs text-neutral-400 dark:text-neutral-500">—</span>
               )}
               <span className="ml-auto flex-none text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
-                {new Date(event.created_at).toLocaleString()}
+                {formatDateTime(event.created_at)}
               </span>
             </li>
           ))}

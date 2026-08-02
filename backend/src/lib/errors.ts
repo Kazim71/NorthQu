@@ -31,3 +31,6 @@ export const tooManyRequests = (message = 'Rate limit exceeded', details?: unkno
 
 export const internal = (message = 'Internal server error') =>
   new AppError(500, 'INTERNAL_ERROR', message);
+
+export const serviceUnavailable = (message: string) =>
+  new AppError(503, 'SERVICE_UNAVAILABLE', message);

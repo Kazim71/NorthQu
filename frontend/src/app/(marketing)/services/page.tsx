@@ -20,6 +20,8 @@ const SERVICES = [
     body:
       "Not every problem needs an AI model, and we don't force one where a simpler automation would do. Where AI is the right fit — an assistant that answers questions from your own documentation, a classification step in a larger workflow — we build it as one working part of a system, not a demo. Where the fix is simpler, we automate the repetitive, manual steps between the tools you already run.",
     tags: ['AI Assistants', 'Workflow Automation', 'Business Process Automation', 'AI Integration'],
+    cta: { label: 'See Automation →', href: '/services/automation' },
+    secondaryCta: { label: 'See AI Content →', href: '/services/ai-content' },
   },
   {
     id: 'websites',
@@ -30,6 +32,7 @@ const SERVICES = [
     body:
       "A website is often the first real interaction someone has with your business — it needs to load fast, explain what you do without friction, and give a visitor a clear next step. We build everything from marketing sites and landing pages to fuller custom builds and WordPress sites, depending on what the business actually needs rather than defaulting to the heaviest option.",
     tags: ['Business Websites', 'WordPress', 'Landing Pages', 'Custom Development'],
+    cta: { label: 'See Web Services →', href: '/services/web-services' },
   },
   {
     id: 'leadpulse',
@@ -38,9 +41,10 @@ const SERVICES = [
     intro:
       'Systems that capture, organize, track and automate leads from first contact through your sales pipeline.',
     body:
-      'This is where LeadPulse — our own lead tracking and identity resolution platform — comes in: capturing anonymous visitor behavior on your storefront, resolving it to a real contact the moment they identify themselves, and giving your team a single dashboard that already knows who’s worth reaching out to. It’s a fully built, working product, not a concept.',
+      'This is where LeadPulse — our own lead tracking and identity resolution platform — comes in: capturing anonymous visitor behavior on your storefront, resolving it to a real contact the moment they identify themselves, and giving your team a single dashboard that already knows who’s worth reaching out to. It’s a fully built, working product, not a concept. A fuller CRM layer (pipeline, deals, tasks) on top of it is in development.',
     tags: ['Lead Tracking', 'CRM Setup', 'Pipeline Automation', 'Integrations'],
     cta: { label: 'See LeadPulse →', href: '/services/leadpulse' },
+    secondaryCta: { label: 'See CRM →', href: '/services/crm' },
   },
 ];
 
@@ -82,13 +86,25 @@ export default function ServicesPage() {
                     </span>
                   ))}
                 </div>
-                {s.cta && (
-                  <Link
-                    href={s.cta.href}
-                    className="mt-6 inline-block text-sm font-medium text-cinnamon-600 hover:text-cinnamon-700 dark:text-cinnamon-400 dark:hover:text-cinnamon-300"
-                  >
-                    {s.cta.label}
-                  </Link>
+                {(s.cta || s.secondaryCta) && (
+                  <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2">
+                    {s.cta && (
+                      <Link
+                        href={s.cta.href}
+                        className="text-sm font-medium text-cinnamon-600 hover:text-cinnamon-700 dark:text-cinnamon-400 dark:hover:text-cinnamon-300"
+                      >
+                        {s.cta.label}
+                      </Link>
+                    )}
+                    {s.secondaryCta && (
+                      <Link
+                        href={s.secondaryCta.href}
+                        className="text-sm font-medium text-cinnamon-600 hover:text-cinnamon-700 dark:text-cinnamon-400 dark:hover:text-cinnamon-300"
+                      >
+                        {s.secondaryCta.label}
+                      </Link>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
