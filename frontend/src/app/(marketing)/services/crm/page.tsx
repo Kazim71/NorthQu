@@ -1,4 +1,17 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: 'CRM',
+  description:
+    'Pipelines, deals and tasks built around how your team actually sells — beyond a contact list.',
+  alternates: { canonical: '/services/crm' },
+  openGraph: {
+    title: 'CRM',
+    description: 'Pipelines, deals and tasks built around how your team actually sells — beyond a contact list.',
+    url: '/services/crm',
+  },
+};
 
 export default function CrmPage() {
   return (

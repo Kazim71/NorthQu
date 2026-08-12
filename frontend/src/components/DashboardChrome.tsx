@@ -51,6 +51,33 @@ export function DashboardChrome({
     }
   }, []);
 
+  /**
+   * Escape closes the drawer, and while it's open the page behind it is
+   * locked from scrolling.
+   *
+   * The scroll lock is the mobile-specific half: without it, dragging on
+   * the dimmed backdrop scrolls the dashboard underneath, so closing the
+   * drawer drops you somewhere you never chose to navigate to. iOS Safari
+   * is the worst offender because the gesture also fights the drawer's own
+   * scroll. Restoring the previous `overflow` value rather than clearing it
+   * outright keeps this safe if anything else ever sets it too.
+   */
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false);
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [mobileOpen]);
+
   function toggleCollapsed() {
     setCollapsed((prev) => {
       const next = !prev;
@@ -106,20 +133,23 @@ export function DashboardChrome({
           it was already responsive-hidden below lg), so below that width
           the only way in is this drawer, opened by the header's hamburger. */}
       {mobileOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => setMobileOpen(false)}
             aria-hidden
           />
-          <aside className="absolute inset-y-0 left-0 flex w-72 flex-col bg-white px-4 py-6 shadow-pop dark:bg-black">
+          {/* pt-safe/pb-safe: the drawer is inset-y-0, so on a notched
+              iPhone its top would otherwise sit under the status bar and
+              its nav under the home indicator. */}
+          <aside className="absolute inset-y-0 left-0 flex w-72 flex-col overflow-y-auto bg-white px-4 py-6 pb-safe pt-safe shadow-pop dark:bg-black">
             <div className="flex items-center justify-between">
               <Brand collapsed={false} />
               <button
                 type="button"
                 aria-label="Close menu"
                 onClick={() => setMobileOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                className="flex h-11 w-11 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
               >
                 <CloseIcon />
               </button>
@@ -146,7 +176,7 @@ export function DashboardChrome({
               type="button"
               aria-label="Open menu"
               onClick={() => setMobileOpen(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-md text-neutral-600 hover:bg-white dark:text-neutral-300 dark:hover:bg-neutral-800 lg:hidden"
+              className="flex h-11 w-11 items-center justify-center rounded-md text-neutral-600 hover:bg-white dark:text-neutral-300 dark:hover:bg-neutral-800 lg:hidden"
             >
               <MenuIcon />
             </button>

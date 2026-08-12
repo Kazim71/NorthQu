@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 /**
@@ -7,6 +8,18 @@ import Link from 'next/link';
  * shipped product behind it yet, so this page describes intent and
  * approach rather than a feature list or screenshots that don't exist.
  */
+export const metadata: Metadata = {
+  title: 'Automation',
+  description:
+    'Workflow automation that connects your storefront, your leads and the tools your team already uses.',
+  alternates: { canonical: '/services/automation' },
+  openGraph: {
+    title: 'Automation',
+    description: 'Workflow automation that connects your storefront, your leads and the tools your team already uses.',
+    url: '/services/automation',
+  },
+};
+
 export default function AutomationPage() {
   return (
     <section className="mx-auto max-w-3xl px-6 py-24">

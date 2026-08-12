@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 /**
@@ -8,6 +9,18 @@ import Link from 'next/link';
  * (track your project's status/milestones in a login) is future work,
  * named as such, not implied to exist today.
  */
+export const metadata: Metadata = {
+  title: 'Web Services',
+  description:
+    'Websites and web apps built to be fast, measurable and maintainable — not just launched.',
+  alternates: { canonical: '/services/web-services' },
+  openGraph: {
+    title: 'Web Services',
+    description: 'Websites and web apps built to be fast, measurable and maintainable — not just launched.',
+    url: '/services/web-services',
+  },
+};
+
 export default function WebServicesPage() {
   return (
     <section className="mx-auto max-w-3xl px-6 py-24">

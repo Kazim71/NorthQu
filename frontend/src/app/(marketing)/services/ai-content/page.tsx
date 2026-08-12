@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 /**
@@ -8,6 +9,18 @@ import Link from 'next/link';
  * content, scheduling/publishing to a client's own site). Stated exactly
  * that way, not rounded up to "available now."
  */
+export const metadata: Metadata = {
+  title: 'AI Content',
+  description:
+    'AI-assisted blog writing and content generation. The engine that writes our own Insights posts.',
+  alternates: { canonical: '/services/ai-content' },
+  openGraph: {
+    title: 'AI Content',
+    description: 'AI-assisted blog writing and content generation. The engine that writes our own Insights posts.',
+    url: '/services/ai-content',
+  },
+};
+
 export default function AiContentPage() {
   return (
     <section className="mx-auto max-w-3xl px-6 py-24">

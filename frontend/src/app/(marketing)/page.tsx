@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getViewer } from '@/lib/auth';
+import { SITE_URL } from '@/lib/site';
 
 const TICKER_ITEMS = [
   'Custom Software',
@@ -117,8 +118,38 @@ export default async function LandingPage({
   // viewer.kind === 'anonymous', or the redirect was bypassed, falls
   // through to the landing page below.
 
+  /**
+   * schema.org Organization markup. This is what lets a search engine (and
+   * the AI answer engines that read the same structured data) state facts
+   * about the company — name, what it does, how to contact it — rather than
+   * inferring them from prose. Every value here is real: no invented
+   * founding date, address, employee count, or social profiles, because a
+   * wrong fact asserted in structured data is worse than an absent one.
+   */
+  const organizationJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'NorthQu',
+    url: SITE_URL,
+    description:
+      'NorthQu builds software, AI automation, lead-tracking systems and websites for businesses.',
+    email: 'northqu71@gmail.com',
+    makesOffer: [
+      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Software Solutions' } },
+      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'AI & Automation' } },
+      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Websites & Digital Experiences' } },
+      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Lead & CRM Systems' } },
+    ],
+  };
+
   return (
     <div>
+      <script
+        type="application/ld+json"
+        // Serialising an object we constructed ourselves — no user input
+        // reaches this string, which is what makes it safe here.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+      />
       {/* ---- Hero ------------------------------------------------------ */}
       <section className="mx-auto max-w-4xl px-6 pb-16 pt-28 text-center sm:pt-36">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-cinnamon-600 dark:text-cinnamon-400">

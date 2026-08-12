@@ -1,4 +1,17 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: 'Pricing',
+  description:
+    'How NorthQu prices software, automation and lead-system work. Talk to us for a scoped quote.',
+  alternates: { canonical: '/pricing' },
+  openGraph: {
+    title: 'Pricing',
+    description: 'How NorthQu prices software, automation and lead-system work. Talk to us for a scoped quote.',
+    url: '/pricing',
+  },
+};
 
 export default function PricingPage() {
   return (

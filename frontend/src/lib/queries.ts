@@ -733,6 +733,7 @@ export async function getVisitors(
   supabase: SupabaseClient,
   organizationId: string,
   range: DateRange,
+  options: { identifiedOnly?: boolean } = {},
 ): Promise<Visitor[]> {
   const { data, error } = await supabase.rpc('get_visitors', {
     p_organization_id: organizationId,
@@ -742,7 +743,30 @@ export async function getVisitors(
 
   if (error) throw new Error(`Failed to load visitors: ${error.message}`);
 
-  const rows = (data ?? []) as VisitorRpcRow[];
+  const allRows = (data ?? []) as VisitorRpcRow[];
+
+  /**
+   * `identifiedOnly` drops anonymous visitors HERE, on the server, before
+   * anything else happens — not with a `.filter()` in the component.
+   *
+   * That ordering is the whole point, and it buys three things at once:
+   *  - Privacy: an anonymous visitor's IP address, city and device string
+   *    never leave the server for an org-admin session at all. Filtering
+   *    client-side would still ship every one of those rows to the browser
+   *    and merely hide them, which is not the same promise.
+   *  - Payload: the batched event fetch below runs against the surviving
+   *    visitor ids only, so a storefront with 95% anonymous traffic stops
+   *    sending ~20x the event rows the page can actually display.
+   *  - Honesty of counts: every "N visitors" figure the caller derives
+   *    from this array then describes exactly what is on screen.
+   *
+   * The super-admin org view deliberately does NOT pass this — a platform
+   * operator inspecting a tenant still sees the full picture.
+   */
+  const rows = options.identifiedOnly
+    ? allRows.filter((r) => r.contact_id !== null)
+    : allRows;
+
   if (rows.length === 0) return [];
 
   // One batched query for every visitor's activity trail, grouped in

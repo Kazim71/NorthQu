@@ -7,7 +7,7 @@ export default function SignupPage() {
     <div className="flex min-h-screen items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8">
-          <Link href="/?home=1">
+          <Link href="/?home=1" aria-label="NorthQu home">
             <LogoLockup className="h-8" />
           </Link>
         </div>

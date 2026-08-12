@@ -55,7 +55,20 @@ const BAND_STYLE: Record<LeadScore['band'], string> = {
   cool: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400',
 };
 
-export function VisitorsTable({ visitors }: { visitors: Visitor[] }) {
+/**
+ * `identifiedOnly` means the CALLER already filtered anonymous visitors out
+ * server-side (see getVisitors) — it does not filter anything here. It only
+ * tells this component to stop offering identity filter pills that would
+ * now be meaningless: "Anonymous 0" next to "Identified N" reads as a bug
+ * or as missing data, when in fact those rows were deliberately never sent.
+ */
+export function VisitorsTable({
+  visitors,
+  identifiedOnly = false,
+}: {
+  visitors: Visitor[];
+  identifiedOnly?: boolean;
+}) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [sort, setSort] = useState<Sort>('recent');
@@ -119,12 +132,21 @@ export function VisitorsTable({ visitors }: { visitors: Visitor[] }) {
       v.deviceType ?? '', v.deviceOs ?? '', v.deviceBrowser ?? '',
       v.eventCount, v.pageCount, v.firstSeen, v.lastSeen,
     ]);
-    const suffix = filter === 'all' ? '' : `-${filter}`;
-    downloadTextFile(`visitors${suffix}-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(headers, rows));
+    // Filename reflects what the file actually contains, so a folder of
+    // exports stays self-describing: "leads-…" when anonymous rows were
+    // never included, "visitors-anonymous-…" for a filtered platform view.
+    const base = identifiedOnly ? 'leads' : 'visitors';
+    const suffix = identifiedOnly || filter === 'all' ? '' : `-${filter}`;
+    downloadTextFile(`${base}${suffix}-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(headers, rows));
   }
 
   if (visitors.length === 0) {
-    return (
+    return identifiedOnly ? (
+      <EmptyState
+        title="No leads in this range"
+        description="A lead appears here the moment a visitor gives up a name, phone number or email — at checkout, in a contact form, or anywhere else your storefront asks. Anonymous browsing is tracked too, but stays out of this list until it has someone attached to it."
+      />
+    ) : (
       <EmptyState
         title="No visitors in this range"
         description="Browsing activity appears here as soon as the tracking snippet reports it — anonymous at first, with contact details filled in once a visitor identifies themselves."
@@ -135,19 +157,21 @@ export function VisitorsTable({ visitors }: { visitors: Visitor[] }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        {FILTERS.map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={
-              filter === f
-                ? 'rounded-full bg-cinnamon-600 px-3.5 py-1.5 text-xs font-medium text-white'
-                : 'rounded-full border border-neutral-200 px-3.5 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:border-cinnamon-400 dark:border-neutral-700 dark:text-neutral-300'
-            }
-          >
-            {FILTER_LABEL[f]} <span className="tabular-nums opacity-70">{counts[f]}</span>
-          </button>
-        ))}
+        {identifiedOnly
+          ? null
+          : FILTERS.map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={
+                  filter === f
+                    ? 'rounded-full bg-cinnamon-600 px-3.5 py-1.5 text-xs font-medium text-white'
+                    : 'rounded-full border border-neutral-200 px-3.5 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:border-cinnamon-400 dark:border-neutral-700 dark:text-neutral-300'
+                }
+              >
+                {FILTER_LABEL[f]} <span className="tabular-nums opacity-70">{counts[f]}</span>
+              </button>
+            ))}
         <label className="ml-auto flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
           <span>Sort</span>
           <select

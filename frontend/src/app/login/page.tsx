@@ -61,7 +61,7 @@ function AuthShell({
               (marketing)/page.tsx. Without it, clicking the logo while
               already authenticated would just bounce right back into the
               app instead of showing the actual public homepage. */}
-          <Link href="/?home=1">
+          <Link href="/?home=1" aria-label="NorthQu home">
             <LogoLockup className="h-8" />
           </Link>
         </div>

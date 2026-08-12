@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 const SERVICES = [
@@ -47,6 +48,18 @@ const SERVICES = [
     secondaryCta: { label: 'See CRM →', href: '/services/crm' },
   },
 ];
+
+export const metadata: Metadata = {
+  title: 'Services',
+  description:
+    'Software development, AI automation, websites and digital experiences, and lead and CRM systems — the four things NorthQu builds.',
+  alternates: { canonical: '/services' },
+  openGraph: {
+    title: 'Services',
+    description: 'Software development, AI automation, websites and digital experiences, and lead and CRM systems — the four things NorthQu builds.',
+    url: '/services',
+  },
+};
 
 export default function ServicesPage() {
   return (
