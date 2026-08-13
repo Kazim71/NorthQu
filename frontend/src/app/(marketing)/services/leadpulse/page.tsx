@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 /**
@@ -56,6 +57,18 @@ const FEATURES = [
     body: 'A separate super-admin view aggregates activity across every client organization, with drill-down into any individual tenant — for the platform operator, not for individual clients.',
   },
 ];
+
+export const metadata: Metadata = {
+  title: 'LeadPulse — turn anonymous traffic into known leads',
+  description:
+    'LeadPulse tracks storefront visitors, links their browsing history to a real contact the moment they identify themselves, and scores who to call first.',
+  alternates: { canonical: '/services/leadpulse' },
+  openGraph: {
+    title: 'LeadPulse — turn anonymous traffic into known leads',
+    description: 'LeadPulse tracks storefront visitors, links their browsing history to a real contact the moment they identify themselves, and scores who to call first.',
+    url: '/services/leadpulse',
+  },
+};
 
 export default function LeadPulsePage() {
   return (

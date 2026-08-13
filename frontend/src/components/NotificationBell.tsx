@@ -34,7 +34,7 @@ export function NotificationBell({ leads }: { leads: ReadySignalLead[] }) {
         type="button"
         aria-label="Notifications"
         onClick={() => setOpen((v) => !v)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-600 transition-colors hover:border-cinnamon-300 hover:text-cinnamon-700 dark:border-neutral-700 dark:bg-black dark:text-neutral-300 dark:hover:text-cinnamon-400"
+        className="relative flex h-11 w-11 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-600 transition-colors hover:border-cinnamon-300 hover:text-cinnamon-700 dark:border-neutral-700 dark:bg-black dark:text-neutral-300 dark:hover:text-cinnamon-400"
       >
         <BellIcon />
         {count > 0 ? (

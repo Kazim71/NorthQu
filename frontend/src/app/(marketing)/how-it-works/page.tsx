@@ -1,3 +1,5 @@
+import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 
 /**
@@ -9,39 +11,70 @@ import Link from 'next/link';
  * embedded live — a point-in-time capture, which will drift from the real
  * app over time; update these if the dashboard's layout changes
  * materially.
+ *
+ * width/height are the PNGs' real pixel dimensions (read directly from
+ * each file's PNG header, not guessed) — required by next/image so it can
+ * reserve the correct layout space before the (large, up to 232KB) file
+ * downloads, which is what actually prevents layout shift; a CSS
+ * max-height alone does not, since the browser doesn't know the aspect
+ * ratio until the image has already loaded.
  */
 const STEPS = [
   {
     img: '/how-it-works/01-app-hub.png',
+    width: 780,
+    height: 1974,
     title: 'Sign in, pick a service',
     body: 'Every login lands on the service hub first — not straight into one product. If you only have LeadPulse today, that\'s the one card that\'s clickable; everything else shows honestly as "Coming soon" rather than a broken link.',
   },
   {
     img: '/how-it-works/02-visitors.png',
+    width: 780,
+    height: 1688,
     title: 'See every visitor, identified or not',
     body: 'One table for everyone who has touched your storefront. Anonymous browsing shows as a visitor ID and activity; the moment someone gives up a phone number or email, their whole prior history attaches to a real name — automatically, not something you have to go looking for.',
   },
   {
     img: '/how-it-works/03-summary.png',
+    width: 780,
+    height: 3830,
     title: 'A quick-glance overview',
     body: 'Stat cards and an events-over-time chart for a fast read on what\'s happening, with a date-range picker (24h/7d/30d/90d/custom) scoping everything on the page.',
   },
   {
     img: '/how-it-works/04-analytics.png',
+    width: 780,
+    height: 3330,
     title: 'The deep dive, when you need it',
     body: 'Conversion funnel, top products/searches/categories, and first-touch traffic sources — split into its own tab so Summary stays a quick check, not a long scroll.',
   },
   {
     img: '/how-it-works/05-team.png',
+    width: 780,
+    height: 1688,
     title: 'Add your own team',
     body: 'Invite teammates yourself — no waiting on us. Set a role, send the temporary password over a secure channel, done. Remove access just as directly when someone leaves.',
   },
   {
     img: '/how-it-works/06-settings.png',
+    width: 780,
+    height: 1688,
     title: 'Your tracking key, in your control',
     body: 'View and rotate your storefront\'s tracking API key without emailing support. Rotating immediately retires the old key, so the dashboard is explicit about what happens next.',
   },
 ];
+
+export const metadata: Metadata = {
+  title: 'How LeadPulse works',
+  description:
+    'Six real screens from the LeadPulse dashboard: sign in, see every identified lead, read the funnel, and manage your own team.',
+  alternates: { canonical: '/how-it-works' },
+  openGraph: {
+    title: 'How LeadPulse works',
+    description: 'Six real screens from the LeadPulse dashboard: sign in, see every identified lead, read the funnel, and manage your own team.',
+    url: '/how-it-works',
+  },
+};
 
 export default function HowItWorksPage() {
   return (
@@ -72,10 +105,19 @@ export default function HowItWorksPage() {
               </p>
             </div>
             <div className={`flex justify-center ${i % 2 === 1 ? 'sm:order-1' : ''}`}>
-              <img
+              <Image
                 src={step.img}
                 alt={step.title}
-                className="max-h-[520px] w-auto rounded-2xl border border-neutral-200 shadow-raised dark:border-neutral-800"
+                width={step.width}
+                height={step.height}
+                // First two are above the fold on a typical viewport —
+                // priority skips lazy-loading for those so the largest
+                // visible image isn't delayed behind its own IntersectionObserver
+                // registration (this is what LCP is usually measuring on
+                // a page like this). Every image after that stays lazy.
+                priority={i < 2}
+                sizes="(min-width: 640px) 360px, 90vw"
+                className="h-auto max-h-[520px] w-auto rounded-2xl border border-neutral-200 shadow-raised dark:border-neutral-800"
               />
             </div>
           </div>

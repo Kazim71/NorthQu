@@ -19,7 +19,10 @@ export function ThemeToggle() {
       type="button"
       aria-label="Toggle color theme"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      className="flex h-9 w-9 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-600 transition-colors hover:border-cinnamon-300 hover:text-cinnamon-700 dark:border-neutral-700 dark:bg-black dark:text-neutral-300 dark:hover:text-cinnamon-400"
+      // h-11 w-11 (44px), not h-9 (36px): Apple's HIG minimum touch target.
+      // The icon inside stays h-4 w-4 — this grows the tappable padding
+      // around it, not the visual weight of the control.
+      className="flex h-11 w-11 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-600 transition-colors hover:border-cinnamon-300 hover:text-cinnamon-700 dark:border-neutral-700 dark:bg-black dark:text-neutral-300 dark:hover:text-cinnamon-400"
     >
       {!mounted ? (
         <span className="block h-4 w-4" />

@@ -1,9 +1,55 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getBlogPostBySlug } from '@/lib/queries';
 
 export const dynamic = 'force-dynamic';
+
+/** Plain-text excerpt for meta/OG descriptions — strips the markdown
+ * punctuation that would otherwise show up literally in a search result. */
+function excerpt(content: string, max = 155): string {
+  const plain = content.replace(/[#*_`>\-[\]()]/g, '').replace(/\s+/g, ' ').trim();
+  return plain.length > max ? `${plain.slice(0, max).trim()}…` : plain;
+}
+
+/**
+ * Per-post metadata. Without this every article inherits the site-wide
+ * title and description, so a dozen posts compete in search results as a
+ * dozen identical-looking entries — the single highest-value SEO fix for
+ * a blog, and the reason `article` OG type matters here specifically.
+ *
+ * A missing post returns empty metadata rather than throwing: the page
+ * component below is what decides to 404, and duplicating that decision
+ * here just to produce a title for a page nobody will see is a second
+ * place for the two to disagree.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string };
+}): Promise<Metadata> {
+  const supabase = createClient();
+  const post = await getBlogPostBySlug(supabase, params.slug).catch(() => null);
+  if (!post) return {};
+
+  const description = excerpt(post.content);
+  const canonical = `/insights/${post.slug}`;
+
+  return {
+    title: post.title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      type: 'article',
+      title: post.title,
+      description,
+      url: canonical,
+      publishedTime: post.published_at ?? undefined,
+    },
+    twitter: { card: 'summary_large_image', title: post.title, description },
+  };
+}
 
 /**
  * Renders content as plain text with line breaks preserved, not a

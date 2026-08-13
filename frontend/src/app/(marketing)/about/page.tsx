@@ -1,3 +1,16 @@
+import type { Metadata } from 'next';
+export const metadata: Metadata = {
+  title: 'About',
+  description:
+    'NorthQu is a technology company building software, AI automation, lead systems and websites. Direction before complexity.',
+  alternates: { canonical: '/about' },
+  openGraph: {
+    title: 'About',
+    description: 'NorthQu is a technology company building software, AI automation, lead systems and websites. Direction before complexity.',
+    url: '/about',
+  },
+};
+
 export default function AboutPage() {
   return (
     <section className="mx-auto max-w-2xl px-6 py-24">

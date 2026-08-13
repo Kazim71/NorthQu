@@ -29,9 +29,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
         // LeadPulse. Sits above the real nav items so it reads as "leave
         // this product," not as a fourth peer section.
         { href: '/app', label: 'All services', icon: <ChevronLeftIcon /> },
-        // One unified "Visitors" entry — the separate Leads / Anonymous
-        // Visitors split was merged into a single table (VisitorsTable).
-        { href: '/dashboard', label: 'Visitors', icon: <LeadsIcon /> },
+        // "Leads", not "Visitors": this view shows ONLY people who have
+        // given up contact details (getVisitors' identifiedOnly). Anonymous
+        // browsing still drives every aggregate on Summary/Analytics — it
+        // just doesn't belong in a list an agent works down to call people.
+        { href: '/dashboard', label: 'Leads', icon: <LeadsIcon /> },
         { href: '/dashboard/summary', label: 'Summary', icon: <SummaryIcon /> },
         { href: '/dashboard/analytics', label: 'Analytics', icon: <AnalyticsIcon /> },
         { href: '/dashboard/team', label: 'Team', icon: <TeamIcon /> },

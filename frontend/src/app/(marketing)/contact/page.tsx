@@ -1,4 +1,17 @@
+import type { Metadata } from 'next';
 import { ContactForm } from '@/components/marketing/ContactForm';
+
+export const metadata: Metadata = {
+  title: 'Contact',
+  description:
+    'Start a conversation with NorthQu about software, AI automation, lead tracking or a website build.',
+  alternates: { canonical: '/contact' },
+  openGraph: {
+    title: 'Contact',
+    description: 'Start a conversation with NorthQu about software, AI automation, lead tracking or a website build.',
+    url: '/contact',
+  },
+};
 
 export default function ContactPage() {
   return (

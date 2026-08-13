@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { getPublishedBlogPosts } from '@/lib/queries';
@@ -8,6 +9,18 @@ function excerpt(content: string, max = 180): string {
   const plain = content.replace(/[#*_`>-]/g, '').replace(/\s+/g, ' ').trim();
   return plain.length > max ? `${plain.slice(0, max).trim()}…` : plain;
 }
+
+export const metadata: Metadata = {
+  title: 'Insights',
+  description:
+    'Notes on the systems we build at NorthQu, and what we learn building them.',
+  alternates: { canonical: '/insights' },
+  openGraph: {
+    title: 'Insights',
+    description: 'Notes on the systems we build at NorthQu, and what we learn building them.',
+    url: '/insights',
+  },
+};
 
 export default async function InsightsPage() {
   const supabase = createClient();

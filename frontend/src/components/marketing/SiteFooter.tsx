@@ -18,7 +18,7 @@ export function SiteFooter() {
       <div className="mx-auto max-w-6xl px-6 py-14">
         <div className="grid gap-10 sm:grid-cols-[1.5fr_1fr_1fr]">
           <div>
-            <Link href="/?home=1">
+            <Link href="/?home=1" aria-label="NorthQu home">
               <LogoLockup className="h-7" forceVariant="dark" />
             </Link>
             <p className="mt-4 max-w-xs text-sm text-marketing-textDim">Technology with direction.</p>
@@ -85,6 +85,11 @@ export function SiteFooter() {
                 </Link>
               </li>
               <li>
+                <Link href="/how-it-works" className="text-sm text-marketing-textDim hover:text-marketing-text">
+                  How it works
+                </Link>
+              </li>
+              <li>
                 <Link href="/login" className="text-sm text-marketing-textDim hover:text-marketing-text">
                   Log in
                 </Link>
@@ -93,8 +98,11 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-12 border-t border-marketing-border/60 pt-6">
+        <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-marketing-border/60 pt-6 pb-safe">
           <p className="text-xs text-marketing-textFaint">© {new Date().getFullYear()} NorthQu</p>
+          <Link href="/privacy" className="text-xs text-marketing-textFaint hover:text-marketing-text">
+            Privacy
+          </Link>
         </div>
       </div>
     </footer>
