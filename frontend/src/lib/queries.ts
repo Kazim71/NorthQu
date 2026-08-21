@@ -645,6 +645,68 @@ interface AnonymousVisitorRpcRow {
   device_type: string | null;
 }
 
+/**
+ * Fetches each visitor's recent events, chunked to stay under PostgREST's
+ * effective URL-length limit for an `.in()` filter.
+ *
+ * A single `.in('visitor_id', [...ids])` call with a few hundred+ UUIDs
+ * (36 chars each, plus commas) builds a query string long enough for the
+ * API gateway to reject outright with a bare "Bad Request" — not a
+ * row-count limit, a URL LENGTH limit. Hit for the first time in
+ * production 2026-08-21 once spacesbyu.com had real traffic: 1000 unique
+ * visitors in a single 7-day window turned this into a ~37,000-character
+ * query string. Confirmed live against production (not simulated) before
+ * this fix — the un-chunked query failed with exactly this error, which
+ * is what took the super-admin org page down.
+ *
+ * Every batched-`in` query in this file goes through this one helper, so
+ * the fix lives in one place rather than being duplicated per call site.
+ * Each chunk already orders by created_at desc and takes up to `limit`
+ * rows; merging N independently-limited chunks needs a final re-sort +
+ * re-slice, or the result would read as "N most recent within whichever
+ * chunk happened to run first" instead of an honest "N most recent
+ * across everyone".
+ */
+const VISITOR_ID_CHUNK_SIZE = 150;
+
+async function fetchEventsForVisitors<T extends { created_at: string }>(
+  supabase: SupabaseClient,
+  organizationId: string,
+  visitorIds: string[],
+  range: DateRange,
+  limit: number,
+  columns: string,
+  extraFilter?: (query: any) => any, // eslint-disable-line @typescript-eslint/no-explicit-any
+): Promise<T[]> {
+  const chunks: string[][] = [];
+  for (let i = 0; i < visitorIds.length; i += VISITOR_ID_CHUNK_SIZE) {
+    chunks.push(visitorIds.slice(i, i + VISITOR_ID_CHUNK_SIZE));
+  }
+
+  const chunkResults = await Promise.all(
+    chunks.map(async (chunk) => {
+      let query = supabase
+        .from('events')
+        .select(columns)
+        .eq('organization_id', organizationId)
+        .in('visitor_id', chunk);
+      if (extraFilter) query = extraFilter(query);
+      const { data, error } = await query
+        .gte('created_at', range.from.toISOString())
+        .lte('created_at', range.to.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (error) throw new Error(`Failed to load visitor events: ${error.message}`);
+      return (data ?? []) as unknown as T[];
+    }),
+  );
+
+  return chunkResults
+    .flat()
+    .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
+    .slice(0, limit);
+}
+
 export async function getAnonymousVisitors(
   supabase: SupabaseClient,
   organizationId: string,
@@ -661,25 +723,21 @@ export async function getAnonymousVisitors(
   const rows = (data ?? []) as AnonymousVisitorRpcRow[];
   if (rows.length === 0) return [];
 
-  // Second query for the expandable activity trail, same batched-`in`
-  // pattern as getLeads — one query for all visitors, grouped in memory,
-  // not one query per row.
+  // Chunked batched query for the expandable activity trail — see
+  // fetchEventsForVisitors() for why this can no longer be one .in() call.
   const visitorIds = rows.map((r) => r.visitor_id);
-  const { data: events, error: eventsError } = await supabase
-    .from('events')
-    .select('id, visitor_id, event_type, url, created_at, metadata')
-    .eq('organization_id', organizationId)
-    .in('visitor_id', visitorIds)
-    .is('contact_id', null)
-    .gte('created_at', range.from.toISOString())
-    .lte('created_at', range.to.toISOString())
-    .order('created_at', { ascending: false })
-    .limit(1000);
-
-  if (eventsError) throw new Error(`Failed to load anonymous visitor events: ${eventsError.message}`);
+  const events = await fetchEventsForVisitors<AnonymousVisitorEvent & { visitor_id: string }>(
+    supabase,
+    organizationId,
+    visitorIds,
+    range,
+    1000,
+    'id, visitor_id, event_type, url, created_at, metadata',
+    (q) => q.is('contact_id', null),
+  );
 
   const byVisitor = new Map<string, AnonymousVisitorEvent[]>();
-  for (const e of (events ?? []) as (AnonymousVisitorEvent & { visitor_id: string })[]) {
+  for (const e of events) {
     const list = byVisitor.get(e.visitor_id) ?? [];
     list.push({ id: e.id, event_type: e.event_type, url: e.url, created_at: e.created_at, metadata: e.metadata });
     byVisitor.set(e.visitor_id, list);
@@ -769,23 +827,20 @@ export async function getVisitors(
 
   if (rows.length === 0) return [];
 
-  // One batched query for every visitor's activity trail, grouped in
-  // memory — same pattern as getLeads(), not one query per row.
+  // Chunked batched query for every visitor's activity trail — see
+  // fetchEventsForVisitors() for why this can no longer be one .in() call.
   const visitorIds = rows.map((r) => r.visitor_id);
-  const { data: events, error: eventsError } = await supabase
-    .from('events')
-    .select('id, visitor_id, event_type, url, created_at, metadata')
-    .eq('organization_id', organizationId)
-    .in('visitor_id', visitorIds)
-    .gte('created_at', range.from.toISOString())
-    .lte('created_at', range.to.toISOString())
-    .order('created_at', { ascending: false })
-    .limit(2000);
-
-  if (eventsError) throw new Error(`Failed to load visitor events: ${eventsError.message}`);
+  const events = await fetchEventsForVisitors<AnonymousVisitorEvent & { visitor_id: string }>(
+    supabase,
+    organizationId,
+    visitorIds,
+    range,
+    2000,
+    'id, visitor_id, event_type, url, created_at, metadata',
+  );
 
   const byVisitor = new Map<string, AnonymousVisitorEvent[]>();
-  for (const e of (events ?? []) as (AnonymousVisitorEvent & { visitor_id: string })[]) {
+  for (const e of events) {
     const list = byVisitor.get(e.visitor_id) ?? [];
     list.push({ id: e.id, event_type: e.event_type, url: e.url, created_at: e.created_at, metadata: e.metadata });
     byVisitor.set(e.visitor_id, list);
